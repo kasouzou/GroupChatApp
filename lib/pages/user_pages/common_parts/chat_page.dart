@@ -1,13 +1,7 @@
 import 'package:flutter/material.dart';
-
-// メッセージのデータを扱うための簡単なクラス（疎結合を意識！）
-class ChatMessage {
-  final String name;
-  final String text;
-  final bool isMe;
-
-  ChatMessage({required this.name, required this.text, required this.isMe});
-}
+import 'package:group_chat_app/logic/models/chat_message_model.dart';
+import 'package:group_chat_app/logic/services/chat_service.dart';
+import 'package:uuid/uuid.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -19,23 +13,40 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   // 入力欄をコントロールするための変数（独自に宣言した変数）
   final TextEditingController _textController = TextEditingController();
-  
-  // メッセージを保存しておくリスト（インメモリ）
-  final List<ChatMessage> _messages = [
-    // 初期表示用のダミーデータ
-    ChatMessage(name: '米木波', text: 'あーなるほどねっす', isMe: false),
-    ChatMessage(name: 'よねきたけし', text: '波のプレアデスみたいにiPhoneで撮って拡大したら、木星の縞模様が見えるかな？と思ったけどダメだった。てこと😅', isMe: false),
-  ];
 
-  // 送信ボタンが押された時の処理
+  // ChatServiceを使えるようにインスタンス化
+  late ChatService _chatService;
+
+  @override
+  void initState() {
+    super.initState();
+    _chatService = ChatService(); // ここで誕生
+  }
+
+  @override
+  void dispose() {
+    _chatService.dispose(); // ここで死ぬ（お片付け）
+    super.dispose();
+  }
+
+  // 仮の自分の情報（実際はGoogleログインから取得する）
+  final String _myGoogleUid = Uuid().v4();
+  final String _currentGroupId = 'family_group_001';
+
+  // 送信ボタンが押された時に呼ばれる関数
   void _handleSubmitted(String text) {
-    if (text.trim().isEmpty) return; // 空文字は無視
+    if (text.trim().isEmpty) return;
 
+    final String content = _textController.text;
     _textController.clear();
-    setState(() {
-      // reverse: true なので、リストの先頭に追加すると画面の下に表示されるよ
-      _messages.insert(0, ChatMessage(name: '自分', text: text, isMe: true));
-    });
+
+    // ChatServiceにメッセージ送信を依頼
+    // UIは「送信した」という事実だけを投げればOK（疎結合！）
+    _chatService.sendMessage(
+      _currentGroupId,
+      _myGoogleUid, 
+      content
+    );
   }
 
   @override
@@ -56,19 +67,40 @@ class _ChatPageState extends State<ChatPage> {
       body: Column(
         children: [
           // メッセージリスト部分
+          // StreamBuilderを使って、バックエンド（モック）の更新を監視する
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              reverse: true, // これで最新のメッセージが下に来るようになる！
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final msg = _messages[index];
-                return _buildMessageBubble(
-                  context,
-                  name: msg.name,
-                  message: msg.text,
-                  isMe: msg.isMe,
-                  screenWidth: screenWidth,
+            child: StreamBuilder<List<ChatMessageModel>>(
+              stream: _chatService.watchMessages(_currentGroupId),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting){
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const Center(
+                    child: Text("メッセージがありません", style: TextStyle(color: Colors.white)),
+                  );
+                }
+
+                final messages = snapshot.data!;
+
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16.0),
+                  reverse: true, // 新しいメッセージが下に来るように
+                  itemCount: messages.length,
+                  itemBuilder: (context, index) {
+                    final message = messages[index];
+                    // senderIdが自分のGoogle UIDと同じなら「自分」と判定
+                    final bool isMe = message.senderId == _myGoogleUid;
+
+                    return _buildMessageBubble(
+                      context, 
+                      name: isMe ? '自分' : '家族メンバー', 
+                      message: message.text, 
+                      isMe: isMe, 
+                      screenWidth: screenWidth
+                    );
+                  }
                 );
               },
             ),

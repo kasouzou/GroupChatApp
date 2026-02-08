@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:genron/pages/user_pages/common_parts/show_discard_dialog.dart';
+import 'package:group_chat_app/pages/user_pages/common_parts/show_discard_dialog.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart'; // ★ URLを開くために追加

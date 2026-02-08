@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:genron/pages/user_pages/youtube_like_bottom_navigation_bar.dart'; // SystemChromeを使うために必要
+import 'package:group_chat_app/pages/user_pages/youtube_like_bottom_navigation_bar.dart'; // SystemChromeを使うために必要
 
 class SplashScreenPage extends StatefulWidget {
   const SplashScreenPage({super.key});

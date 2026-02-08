@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:genron/pages/splash_screen.dart';
-import 'package:google_fonts/google_fonts.dart'; // Google Fontsを使うために必要
+
+import 'package:google_fonts/google_fonts.dart';// Google Fontsを使うために必要
+import 'package:group_chat_app/pages/splash_screen.dart'; 
 
 void main() {
   runApp(const MyApp());
