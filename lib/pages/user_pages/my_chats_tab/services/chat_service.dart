@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:group_chat_app/pages/user_pages/my_chats_tab/abstract/chat_abstract.dart';
 import 'package:group_chat_app/pages/user_pages/my_chats_tab/model/chat_message_model.dart';
 import 'package:uuid/uuid.dart';
