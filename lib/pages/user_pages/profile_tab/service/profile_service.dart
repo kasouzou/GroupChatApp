@@ -84,7 +84,7 @@ class ProfileService implements ProfileAbstract {
     }
   }
 
-  /// プロフィールを更新する
+  /// プロフィールを更新する（プロフィール画像は別でUploadImageメソッドとして下記に切り出し。）
   @override
   Future<void> updateProfile(UserModel user) async {
     // 1. VPSへ保存リクエストを送る
@@ -96,6 +96,23 @@ class ProfileService implements ProfileAbstract {
     // 2. 保存が成功したら、その最新の値をまた Stream に流す
     // これが「一方向データフロー」の鍵！
     _userStreamController.add(user);
+  }
+
+  /// 画像ファイルをアップロードして、公開URLを返す（擬似エンドポイント）
+  @override
+  Future<String> uploadImage(String filePath) async {
+    // 💡 ツッコミ！: 本来はここで MultipartFile を作って Dio とかで VPS に POST するんだ。
+    // final formData = FormData.fromMap({
+    //   'file': await MultipartFile.fromFile(filePath),
+    // });
+    // final response = await _apiClient.post('/upload', data: formData);
+    // return response.data['url'];
+
+    // 今は擬似的に2秒待機して、ダミーのURLを返すよ
+    await Future.delayed(const Duration(seconds: 2));
+    
+    // 成功した体で、適当な画像URLを返す
+    return 'https://picsum.photos/200'; 
   }
 
   // お片付け（メモリリーク防止）

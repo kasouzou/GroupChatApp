@@ -18,40 +18,29 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
   final _formKey = GlobalKey<FormState>();
 
   late final TextEditingController _nameController;
-  late final TextEditingController _headlineController;
-  late final TextEditingController _bioController;
-  late final TextEditingController _locationController;
-  late final TextEditingController _websiteController;
 
   @override
   void initState() {
     super.initState();
-    // 💡 3. メモリキャッシュ（Provider）から現在のユーザーデータを取得
-    // build前なので ref.read を使うぜ
-    final user = ref.read(profileNotifierProvider).user;
 
-    // 💡 4. 取得したデータをコントローラーにセット
-    _nameController = TextEditingController(text: user.displayName);
-    _headlineController = TextEditingController(text: 'OpenAI社の最高経営責任者'); 
-    _bioController = TextEditingController(text: 'AIと社会の交差点で、より良い未来の対話をつくります。');
-    _locationController = TextEditingController(text: 'San Francisco, CA');
-    _websiteController = TextEditingController(text: 'openai.com');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(profileNotifierProvider.notifier).startEditing();
+    });
+
+    final editingName = ref.read(profileNotifierProvider).editingName;
+    _nameController = TextEditingController(text: editingName);
   }
+
 
   @override
   void dispose() {
     _nameController.dispose();
-    _headlineController.dispose();
-    _bioController.dispose();
-    _locationController.dispose();
-    _websiteController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
-
     // 💡 5. 保存中かどうかを監視（ボタンの無効化やグルグル表示に使う）
     final isSaving = ref.watch(profileNotifierProvider.select((s) => s.isSaving));
 
@@ -81,7 +70,7 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.close, color: Colors.white),
+            icon: const Icon(Icons.close, color: Color.fromARGB(255, 255, 255, 255)),
             onPressed: () async {
               final shouldDiscard = await showDiscardDialog(context);
               if (shouldDiscard != true) {
@@ -96,15 +85,6 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
             style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
           ),
           centerTitle: true,
-          actions: [
-            TextButton(
-              // 💡 7. 保存中はボタンを押せなくする
-              onPressed: isSaving ? null : () => _onSavePressed(),
-              child: isSaving 
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                : const Text('保存', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
-          ],
         ),
         body: ShaderMask(
           shaderCallback: (Rect bounds) {
@@ -148,28 +128,6 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
                               return null;
                             },
                           ),
-                          const SizedBox(height: 12),
-                          _buildField(
-                            label: '肩書き',
-                            controller: _headlineController,
-                          ),
-                          const SizedBox(height: 12),
-                          _buildField(
-                            label: '自己紹介',
-                            controller: _bioController,
-                            maxLines: 4,
-                          ),
-                          const SizedBox(height: 12),
-                          _buildField(
-                            label: '場所',
-                            controller: _locationController,
-                          ),
-                          const SizedBox(height: 12),
-                          _buildField(
-                            label: 'Webサイト',
-                            controller: _websiteController,
-                            keyboardType: TextInputType.url,
-                          ),
                           const SizedBox(height: 20),
                           _buildSaveButton(isSaving),// 💡 状態を渡す
                         ],
@@ -189,6 +147,10 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
   }
 
   Widget _buildAvatarSection() {
+    // 💡 stateから現在の「編集中URL」を取得する
+    final editingPhotoUrl = ref.watch(profileNotifierProvider.select((s) => s.editingPhotoUrl));
+    final isSaving = ref.watch(profileNotifierProvider.select((s) => s.isSaving));
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
@@ -202,46 +164,48 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
         ),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
-        children: [
-          const CircleAvatar(
-            radius: 32,
-            backgroundImage: AssetImage('assets/image/treatGemini.png'),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'プロフィール画像',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
+      child: InkWell(// 💡 全体をタップ可能にする
+        onTap: isSaving ? null : () => ref.read(profileNotifierProvider.notifier).pickAndUploadImage(),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 32,
+                // 💡 編集中URLがあればそれを表示、なければ元の画像
+                // アップロード直後の新しい画像、もしくは startEditing でコピーされた「今の画像」が表示される。
+                backgroundImage: editingPhotoUrl.startsWith('http')
+                  ? NetworkImage(editingPhotoUrl) as ImageProvider
+                  : const AssetImage('assets/image/treatGemini.png'),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'プロフィール画像',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      isSaving ? 'アップロード中...' : 'タップして画像を変更',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.85),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  'タップして画像を変更',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.85),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
+              ),
+              const Icon(Icons.camera_alt, color: Colors.white), // 💡 変更ボタンをアイコンに
+            ],
           ),
-          TextButton(
-            onPressed: () {
-              debugPrint('プロフィール画像の変更が押されました。');
-            },
-            child: const Text(
-              '変更',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -286,9 +250,13 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
     final isValid = _formKey.currentState?.validate() ?? false;
     if (!isValid) return;
 
-    // 💡 8. Notifier を呼んで VPS に保存！
-    await ref.read(profileNotifierProvider.notifier).saveProfile(_nameController.text);
-  
+    // Notifierを読み込む
+    final notifier = ref.read(profileNotifierProvider.notifier);
+
+    // 💡  Notifier を呼んで VPS に保存！
+    await notifier.saveProfile(
+      newName: _nameController.text,
+    );
     // 💡 9. エラーがなければ画面を閉じる
     final error = ref.read(profileNotifierProvider).errorMessage;
     if (error == null && mounted) {

@@ -1,8 +1,11 @@
 // プロフィール画面の編集の成功をUIに反映するために、ストリームを監視して状態を更新するProfileNotifierの実装です。
 
+import 'dart:ui';
 import 'package:group_chat_app/pages/user_pages/profile_tab/model/profile_ui_model.dart';
 import 'package:group_chat_app/pages/user_pages/profile_tab/service/profile_service.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:image_picker/image_picker.dart';
 
 part 'profile_notifier.g.dart';
 
@@ -55,16 +58,74 @@ class ProfileNotifier extends _$ProfileNotifier {
     );
   }
 
-  Future<void> saveProfile(String newName) async {
+  //ユーザーからプロフィールの編集があった際にVPSに変更を保存するメソッド
+  Future<void> saveProfile({
+    String? newName, 
+    // 今後 role とか他のフィールドが増えてもここに追加すればOK！
+    }
+    ) async {
     state = state.copyWith(isSaving: true, errorMessage: null);
-    final updatedUser = state.user.copyWith(displayName: newName);
+    // 💡 state.user.copyWith を使って、変更がある場所だけ上書きした新しいUserを作る
+    final updatedUser = state.user.copyWith(
+      displayName: newName ?? state.user.displayName, // もし左側（newName）が null だったら、右側の値を採用してね！
+      photoUrl: state.editingPhotoUrl, // 💡 ここが重要！:// 💡 編集中URLがあればそれを、なければ元の画像アップロード直後の新しい画像、もしくは startEditing でコピーされた「今の画像」を引き継ぎ保存。
+    );
 
     try {
       final profileService = ref.read(profileServiceProvider);
       await profileService.updateProfile(updatedUser);
-      // 成功後の処理（isEditing = falseなど）は Stream がやってくれる！
+      // ツッコミ！: 成功したら Service 側の Stream が最新の updatedUser を流してくれるから、
+      // ここで state = ... を書かなくても、自動的に build() が走って画面が更新される。これが最強。
     } catch (e) {
       state = state.copyWith(isSaving: false, errorMessage: '保存に失敗しました');
+    }
+  }
+
+  /// 💡 改造：画像を選択 -> 切り抜き -> アップロード
+  Future<void> pickAndUploadImage() async {
+    final picker = ImagePicker();
+    // 1. ギャラリーから画像を選択
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+    
+    if (image == null) return; // キャンセルされたら何もしない
+
+    // 💡 2. 画像を正方形に切り抜く (丸いアイコン用)
+    final croppedFile = await ImageCropper().cropImage(
+      sourcePath: image.path,
+      aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1), // 1:1固定
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: '画像を切り抜く',
+          toolbarColor: const Color(0xFF000675),
+          toolbarWidgetColor: const Color.fromARGB(255, 255, 255, 255),
+          initAspectRatio: CropAspectRatioPreset.square,
+          lockAspectRatio: true, // アスペクト比を固定
+        ),
+        IOSUiSettings(
+          title: '画像を切り抜く',
+        ),
+      ],
+    );
+
+    if (croppedFile == null) return;
+
+
+    // 2. アップロード中状態にする
+    state = state.copyWith(isSaving: true, errorMessage: null);
+
+    try {
+      final profileService = ref.read(profileServiceProvider);
+      // 💡 切り抜かれたファイルパスをサービスに渡す
+      final uploadedUrl = await profileService.uploadImage(croppedFile.path);
+      
+      // 4. UI状態（編集中のURL）を更新
+      // ここではまだDBには保存せず、メモリ上の「編集中」として保持する
+      state = state.copyWith(
+        editingPhotoUrl: uploadedUrl, 
+        isSaving: false
+      );
+    } catch (e) {
+      state = state.copyWith(isSaving: false, errorMessage: '画像のアップロードに失敗しました');
     }
   }
 }
