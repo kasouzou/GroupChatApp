@@ -64,11 +64,11 @@ class ProfileService implements ProfileAbstract {
       // final response = await _apiClient.get('/users/$userId');
       // final latestUser = UserModel.fromMap(response.data);
 
-      // 今はテスト用に擬似データを流すよ
+      // 今はテスト用にVPSから以下のデータが渡ってきたと仮定して擬似データを流すよ
       final latestUser = UserModel(
         id: userId,
-        displayName: 'サミュエル・アルトマン',
-        photoUrl: '',
+        displayName: '米木歩',
+        photoUrl: 'assets/icon/icon.png',
         role: 'leader',
         createdAt: DateTime.now(),
       );

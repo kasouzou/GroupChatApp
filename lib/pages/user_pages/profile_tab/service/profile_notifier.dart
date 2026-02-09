@@ -12,16 +12,16 @@ class ProfileNotifier extends _$ProfileNotifier {
   @override
   ProfileUiModel build() {
     // 💡 1. サービスの取得
-    final service = ref.watch(profileServiceProvider);
+    final profileService = ref.watch(profileServiceProvider);
 
     // 💡 2. 監視を開始
     // build()が走るたびに古いsubscriptionは破棄されるよう、下でref.onDisposeを呼ぶ
-    _listenToUserChanges(service);
+    _listenToUserChanges(profileService);
 
     // 💡 3. 初期状態
     // ProfileServiceから現在のユーザー情報の最新値を同期的に取れるならそれを使うのがベター
     // この最新値を、Streamで受け取るさらに新しい情報で更新し、UIに反映していくのがこのファイルの内容
-    return ProfileUiModel.initial(service.currentUser);
+    return ProfileUiModel.initial(profileService.currentUser);
   }
 
   void _listenToUserChanges(ProfileService profileService) {

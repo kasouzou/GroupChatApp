@@ -1,22 +1,29 @@
 // プロフィール画面です。
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // 💡 追加：Riverpodのインポート
+import 'package:group_chat_app/pages/user_pages/profile_tab/service/profile_notifier.dart';
 import 'package:group_chat_app/pages/user_pages/profile_tab/ui/profile_details_page.dart';
 import 'package:group_chat_app/pages/user_pages/profile_tab/ui/settings_page.dart';
 
-class ProfilePage extends StatefulWidget {
+class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
 
   @override
-  State<ProfilePage> createState() => _ProfilePageState();
+  ConsumerState<ProfilePage> createState() => _ProfilePageState();
 }
 
-class _ProfilePageState extends State<ProfilePage> {
+class _ProfilePageState extends ConsumerState<ProfilePage> {
   // ★ 1. 状態管理変数（独自変数）
   bool _isSettingsPressed = false;
 
   @override
   Widget build(BuildContext context) {
+    // 💡 2. キャッシュされた最新のユーザー情報を取得（監視開始）
+    // これにより、編集画面で保存が成功すると、この build() が自動で再実行されるぜ
+    final profileState = ref.watch(profileNotifierProvider);
+    final user = profileState.user;
+
+
     // 画面サイズを取得して、横向きかどうかを判定する（マクロな視点）
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
@@ -141,18 +148,22 @@ class _ProfilePageState extends State<ProfilePage> {
                                 padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
                                 child: Row(
                                   children: [
-                                    const CircleAvatar(
+                                    // 💡 3. アイコン画像の出し分け
+                                    CircleAvatar(
                                       radius: 35,
-                                      backgroundImage: AssetImage('assets/image/treatGemini.png'),
+                                      backgroundImage: user.photoUrl.isNotEmpty
+                                        ? NetworkImage(user.photoUrl) as ImageProvider
+                                        : AssetImage('assets/image/treatGemini.png'),
                                     ),
                                     const SizedBox(width: 16),
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          const Text(
-                                            'サミュエル・アルトマン',
-                                            style: TextStyle(
+                                          // 💡 4. キャッシュされた名前を表示！
+                                          Text(
+                                            user.displayName.isNotEmpty ? user.displayName : '未設定',
+                                            style: const TextStyle(
                                               fontWeight: FontWeight.bold,
                                               fontSize: 18,
                                               color: Colors.white,
