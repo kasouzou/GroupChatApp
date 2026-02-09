@@ -13,6 +13,7 @@ class ChatService implements ChatAbstract {
       id: const Uuid().v4(),
       groupId: 'family_group_001',
       senderId: 'user_father', // お父さん
+      role: 'leader',
       text: '今日の夕飯は何かな？',
       createdAt: DateTime.now().subtract(const Duration(minutes: 10)),
     ),
@@ -20,6 +21,7 @@ class ChatService implements ChatAbstract {
       id: const Uuid().v4(),
       groupId: 'family_group_001',
       senderId: 'user_mother', // お母さん
+      role: 'member',
       text: '今日はハンバーグよ！',
       createdAt: DateTime.now().subtract(const Duration(minutes: 5)),
     ),
@@ -27,6 +29,7 @@ class ChatService implements ChatAbstract {
       id: const Uuid().v4(),
       groupId: 'family_group_001',
       senderId: 'user_sister', // 妹
+      role: 'member',
       text: 'わーい！楽しみ！',
       createdAt: DateTime.now().subtract(const Duration(minutes: 2)),
     ),
@@ -60,6 +63,7 @@ class ChatService implements ChatAbstract {
       id: uuid, // ここでUUIDを生成！
       groupId: groupId,
       senderId: senderId,
+      role: 'member',
       text: text,
       createdAt: DateTime.now(),
     );

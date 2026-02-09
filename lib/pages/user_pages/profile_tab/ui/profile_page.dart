@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'; // 💡 追加：Riverpodのインポート
 import 'package:group_chat_app/pages/user_pages/profile_tab/service/profile_notifier.dart';
-import 'package:group_chat_app/pages/user_pages/profile_tab/ui/profile_details_page.dart';
+import 'package:group_chat_app/pages/user_pages/profile_tab/ui/profile_edit_page.dart';
 import 'package:group_chat_app/pages/user_pages/profile_tab/ui/settings_page.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
@@ -133,15 +133,15 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             borderRadius: BorderRadius.circular(12),
                             child: InkWell(
                               onTap: () async{
-                                debugPrint('--- 今は[profile_page(プロフィール画面)]にいます。 遷移開始: プロフィール詳細画面へ (rootNavigator: true(意味：ボトムナビゲーションバーの画面スタックじゃなくてRootNavigatorの画面スタックに積むよ)) ---');
+                                debugPrint('--- 今は[profile_page(プロフィール画面)]にいます。 遷移開始: プロフィール編集画面へ (rootNavigator: true(意味：ボトムナビゲーションバーの画面スタックじゃなくてRootNavigatorの画面スタックに積むよ)) ---');
                                 // rootNavigator: true でボトムバーを隠す世界へ
                                 final result = await Navigator.of(context, rootNavigator: true).push(
                                   MaterialPageRoute(
-                                    builder: (context) => const ProfileDetailsPage(),
+                                    builder: (context) => const ProfileEditPage(),
                                     settings: const RouteSettings(name: 'ProfileDetailsPage'),
                                   ),
                                 );
-                                debugPrint('--- 今は[profile_page(プロフィール画面)]にいます。 プロフィール詳細画面から戻りました。受け取った結果: $result ---');
+                                debugPrint('--- 今は[profile_page(プロフィール画面)]にいます。 プロフィール編集画面から戻りました。受け取った結果: $result ---');
                               },
                               splashColor: Colors.white.withOpacity(0.2),
                               child: Padding(

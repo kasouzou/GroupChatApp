@@ -76,7 +76,7 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
               if (shouldDiscard != true) {
                 return;
               }
-              debugPrint('×ボタンが押されました。編集を破棄して戻ります[ProfileEditPage]');
+              debugPrint('×ボタンが押されました。"done" を持って前の画面へ戻ります[(プロフィール編集画面)]');
               Navigator.pop(context, 'cancel');
             },
           ),
