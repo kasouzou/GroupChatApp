@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:group_chat_app/pages/login_page/login_page.dart';
 import 'package:group_chat_app/pages/user_pages/youtube_like_bottom_navigation_bar.dart'; // SystemChromeを使うために必要
 
 class SplashScreenPage extends StatefulWidget {
@@ -24,13 +25,13 @@ class _SplashScreenState extends State<SplashScreenPage> {
     // スプラッシュ画面を少し表示するために2秒間待機
     await Future.delayed(const Duration(seconds: 4));
 
-    // ユーザ画面へ。
+    // ログイン画面へ。（ログインしていたら表示しないかも。）
     // 後で認証状態に基づいて遷移先を変更するロジックを追加予定
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => const YoutubeLikeBottomNavigationBar(),
-        settings: RouteSettings(name: 'YoutubeLikeBottomNavigationBar'), // ← 名前を付ける
+        builder: (context) => const LoginPage(),
+        settings: RouteSettings(name: 'LoginPage'), // ← 名前を付ける
       ),
     );
   }
