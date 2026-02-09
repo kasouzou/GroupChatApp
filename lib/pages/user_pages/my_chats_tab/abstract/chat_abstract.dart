@@ -1,6 +1,6 @@
 
 
-import 'package:group_chat_app/logic/models/chat_message_model.dart';
+import 'package:group_chat_app/pages/user_pages/my_chats_tab/model/chat_message_model.dart';
 
 abstract class ChatAbstract {
   // 指定したグループのメッセージをリアルタイムに監視する「流れ」を取得

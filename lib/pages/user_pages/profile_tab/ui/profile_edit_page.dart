@@ -1,6 +1,6 @@
 // プロフィールの編集ページです。
 import 'package:flutter/material.dart';
-import 'package:group_chat_app/pages/user_pages/common_parts/show_discard_dialog.dart';
+import 'package:group_chat_app/pages/common_parts/show_discard_dialog.dart';
 
 class ProfileEditPage extends StatefulWidget {
   const ProfileEditPage({super.key});

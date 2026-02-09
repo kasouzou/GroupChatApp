@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-import 'package:group_chat_app/pages/user_pages/profile_tab/profile_page.dart';
-import 'package:group_chat_app/pages/user_pages/new_chat_tab/new_chat_page.dart';
-import 'package:group_chat_app/pages/user_pages/my_chats_tab/my_chats_page.dart';
+import 'package:group_chat_app/pages/user_pages/profile_tab/ui/profile_page.dart';
+import 'package:group_chat_app/pages/user_pages/new_chat_tab/ui/new_chat_page.dart';
+import 'package:group_chat_app/pages/user_pages/my_chats_tab/ui/my_chats_page.dart';
 
 // なるほど — 見た目が黒くなるのはよくあるハマりで、原因はだいたいこのどれか：
 // BottomNavigationBar を包む Material（内部的に使われるもの）が デフォルトで暗い色を描画している

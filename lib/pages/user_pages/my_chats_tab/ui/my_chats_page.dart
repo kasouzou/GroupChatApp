@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:group_chat_app/pages/user_pages/common_parts/chat_page.dart';
+import 'package:group_chat_app/pages/user_pages/my_chats_tab/ui/chat_page.dart';
 
 // 状態を持つために StatefulWidget に変更！
 class MyChatsPage extends StatefulWidget {

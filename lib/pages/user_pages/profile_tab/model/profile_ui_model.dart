@@ -1,4 +1,4 @@
-import 'package:group_chat_app/logic/models/user_model.dart';
+import 'package:group_chat_app/common/models/user_model.dart';
 
 class ProfileUiModel {
   // 1. DBから取得した「正解」のデータ（表示モードで使用）

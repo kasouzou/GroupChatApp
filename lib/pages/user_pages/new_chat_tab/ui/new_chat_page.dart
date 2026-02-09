@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:group_chat_app/pages/user_pages/new_chat_tab/add_member_page.dart';
-import 'package:group_chat_app/pages/user_pages/new_chat_tab/make_chat_page.dart';
+import 'package:group_chat_app/pages/user_pages/new_chat_tab/ui/add_member_page.dart';
+import 'package:group_chat_app/pages/user_pages/new_chat_tab/ui/make_chat_page.dart';
 
 class NewChatPage extends StatelessWidget {
   const NewChatPage({super.key});

@@ -1,8 +1,8 @@
 // プロフィール画面です。
 
 import 'package:flutter/material.dart';
-import 'package:group_chat_app/pages/user_pages/profile_tab/profile_details_page.dart';
-import 'package:group_chat_app/pages/user_pages/profile_tab/settings_page.dart';
+import 'package:group_chat_app/pages/user_pages/profile_tab/ui/profile_details_page.dart';
+import 'package:group_chat_app/pages/user_pages/profile_tab/ui/settings_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});

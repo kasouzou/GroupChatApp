@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:group_chat_app/logic/models/chat_message_model.dart';
-import 'package:group_chat_app/logic/services/chat_service.dart';
+import 'package:group_chat_app/pages/user_pages/my_chats_tab/model/chat_message_model.dart';
+import 'package:group_chat_app/pages/user_pages/my_chats_tab/services/chat_service.dart';
 import 'package:uuid/uuid.dart';
 
 class ChatPage extends StatefulWidget {

@@ -1,6 +1,6 @@
 // プロフィールの詳細や編集を行うページです。
 import 'package:flutter/material.dart';
-import 'package:group_chat_app/pages/user_pages/profile_tab/profile_edit_page.dart';
+import 'package:group_chat_app/pages/user_pages/profile_tab/ui/profile_edit_page.dart';
 
 class ProfileDetailsPage extends StatefulWidget {
   const ProfileDetailsPage({super.key});
