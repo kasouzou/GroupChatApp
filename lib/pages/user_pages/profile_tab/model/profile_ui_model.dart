@@ -13,12 +13,15 @@ class ProfileUiModel {
   final bool isEditing; // trueなら編集画面、falseなら表示画面
   final bool isSaving;  // 保存ボタン押下後のグルグル（Loading）状態
 
+  final String? errorMessage;
+
   ProfileUiModel({
     required this.user,
     required this.editingName,
     required this.editingPhotoUrl,
     this.isEditing = false,
     this.isSaving = false,
+    this.errorMessage,
   });
 
   // 💡 ツッコミ！: 編集を開始する時に、現在のユーザー情報を「仮データ」にコピーする関数
@@ -27,6 +30,7 @@ class ProfileUiModel {
       user: user,
       editingName: user.displayName,
       editingPhotoUrl: user.photoUrl,
+      // errorMessage はデフォルトで null なので書かなくてOK
     );
   }
 
@@ -37,6 +41,7 @@ class ProfileUiModel {
     String? editingPhotoUrl,
     bool? isEditing,
     bool? isSaving,
+    String? errorMessage,
   }) {
     return ProfileUiModel(
       user: user ?? this.user,
@@ -44,6 +49,7 @@ class ProfileUiModel {
       editingPhotoUrl: editingPhotoUrl ?? this.editingPhotoUrl,
       isEditing: isEditing ?? this.isEditing,
       isSaving: isSaving ?? this.isSaving,
+      errorMessage: errorMessage ?? this.errorMessage,
     );
   }
 }

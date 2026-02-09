@@ -41,10 +41,15 @@ dependencies:
   url_launcher: ^6.3.2
   uuid: ^4.5.2
   google_sign_in: ^7.2.0
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  # 💡 バージョンを指定せず、Flutterに「一番仲良くできるやつ選んで！」と任せる
+  build_runner: any
+  riverpod_generator: any
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

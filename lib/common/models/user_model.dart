@@ -65,4 +65,16 @@ class UserModel {
       createdAt: createdAt,
     );
   }
+
+  // UserModel.empty() と呼んだ瞬間に、IDも名前も空っぽの「仮のユーザー」を生成し、
+  // ProfileNotifierがエラーを出さずに「とりあえず空のデータで画面を準備しておくか」と納得させるためのファクトリーメソッド。
+  factory UserModel.empty() {
+    return UserModel(
+      id: '',
+      displayName: '',
+      photoUrl: '',
+      role: 'member',
+      createdAt: DateTime.now(),  
+    );
+  }
 }
