@@ -1,15 +1,20 @@
 // プロフィールの編集ページです。
 import 'package:flutter/material.dart';
 import 'package:group_chat_app/pages/common_parts/show_discard_dialog.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:group_chat_app/pages/user_pages/profile_tab/service/profile_notifier.dart';
 
-class ProfileEditPage extends StatefulWidget {
+
+// 💡 1. ConsumerStatefulWidget に変更
+class ProfileEditPage extends ConsumerStatefulWidget {
   const ProfileEditPage({super.key});
 
   @override
-  State<ProfileEditPage> createState() => _ProfileEditPageState();
+  ConsumerState<ProfileEditPage> createState() => _ProfileEditPageState();
 }
 
-class _ProfileEditPageState extends State<ProfileEditPage> {
+// 💡 2. ConsumerState に変更
+class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
   final _formKey = GlobalKey<FormState>();
 
   late final TextEditingController _nameController;
@@ -21,8 +26,13 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: 'サミュエル・アルトマン');
-    _headlineController = TextEditingController(text: 'OpenAI社の最高経営責任者');
+    // 💡 3. メモリキャッシュ（Provider）から現在のユーザーデータを取得
+    // build前なので ref.read を使うぜ
+    final user = ref.read(profileNotifierProvider).user;
+
+    // 💡 4. 取得したデータをコントローラーにセット
+    _nameController = TextEditingController(text: user.displayName);
+    _headlineController = TextEditingController(text: 'OpenAI社の最高経営責任者'); 
     _bioController = TextEditingController(text: 'AIと社会の交差点で、より良い未来の対話をつくります。');
     _locationController = TextEditingController(text: 'San Francisco, CA');
     _websiteController = TextEditingController(text: 'openai.com');
@@ -41,6 +51,18 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   @override
   Widget build(BuildContext context) {
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+
+    // 💡 5. 保存中かどうかを監視（ボタンの無効化やグルグル表示に使う）
+    final isSaving = ref.watch(profileNotifierProvider.select((s) => s.isSaving));
+
+    // 💡 6. エラーが発生したらスナックバーを出す（副作用の監視）
+    ref.listen(profileNotifierProvider.select((s) => s.errorMessage), (previous, next) {
+      if (next != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(next), backgroundColor: Colors.redAccent),
+        );
+      }
+    });
 
     return Container(
       decoration: BoxDecoration(
@@ -76,21 +98,11 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
           centerTitle: true,
           actions: [
             TextButton(
-              onPressed: () {
-                final isValid = _formKey.currentState?.validate() ?? false;
-                if (!isValid) {
-                  return;
-                }
-                debugPrint('保存が押されました。入力内容: ${_nameController.text}');
-                Navigator.pop(context, 'saved');
-              },
-              child: const Text(
-                '保存',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              // 💡 7. 保存中はボタンを押せなくする
+              onPressed: isSaving ? null : () => _onSavePressed(),
+              child: isSaving 
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                : const Text('保存', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -159,7 +171,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                             keyboardType: TextInputType.url,
                           ),
                           const SizedBox(height: 20),
-                          _buildSaveButton(),
+                          _buildSaveButton(isSaving),// 💡 状態を渡す
                         ],
                       ),
                     ),
@@ -269,28 +281,37 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
       ),
     );
   }
+  // 💡 保存処理のロジックを分離
+  Future<void> _onSavePressed() async{
+    final isValid = _formKey.currentState?.validate() ?? false;
+    if (!isValid) return;
 
-  Widget _buildSaveButton() {
+    // 💡 8. Notifier を呼んで VPS に保存！
+    await ref.read(profileNotifierProvider.notifier).saveProfile(_nameController.text);
+  
+    // 💡 9. エラーがなければ画面を閉じる
+    final error = ref.read(profileNotifierProvider).errorMessage;
+    if (error == null && mounted) {
+      Navigator.pop(context, 'saved');
+    }
+  }
+
+  Widget _buildSaveButton(bool isSaving){
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: () {
-          final isValid = _formKey.currentState?.validate() ?? false;
-          if (!isValid) {
-            return;
-          }
-          debugPrint('保存ボタンが押されました。');
-          Navigator.pop(context, 'saved');
-        },
+        onPressed: isSaving ? null : _onSavePressed,
         style: ElevatedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 14),
-          backgroundColor: const Color.fromARGB(230, 30, 144, 255),
+          backgroundColor: isSaving ? Colors.grey : const Color.fromARGB(230, 30, 144, 255),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        child: const Text(
-          '変更を保存する',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
+        child: isSaving 
+          ? const Text('保存中...')
+          : const Text(
+            '変更を保存する',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
       ),
     );
   }

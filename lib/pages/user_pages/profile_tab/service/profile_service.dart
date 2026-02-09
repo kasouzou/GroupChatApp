@@ -18,7 +18,7 @@ ProfileService profileService(ProfileServiceRef ref) {
 }
 
 class ProfileService implements ProfileAbstract {
-    // 💡 1. 「バケツ」を用意する（最新のユーザー情報の値をメモリにキャッシュしておく）
+  // 💡 1. 「バケツ」を用意する（最新のユーザー情報の値をメモリにキャッシュしておく）
   UserModel _currentUser = UserModel.empty();// 最初は empty
 
   // 💡 2. 外部から「今の最新値」をサッと取れるようにする
