@@ -17,6 +17,13 @@ class ChatMessageModel {
     required this.createdAt,
   });
 
+  // --- 便利機能（ヘルパーメソッド） ---
+
+  // 💡 ツッコミ！: 権限チェックを文字列比較で何度も書くのは非効率。
+  // こうやって getter を作っておけば、将来役割が増えてもここを直すだけで済む（疎結合！）
+  bool get isLeader => role == 'leader';
+  bool get isMember => role == 'member';
+
   // バックエンド（JSON）から変換する「工場」
   factory ChatMessageModel.fromJson(Map<String, dynamic> json) {
     return ChatMessageModel(

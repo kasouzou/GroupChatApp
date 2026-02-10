@@ -69,7 +69,6 @@ class ProfileService implements ProfileAbstract {
         id: userId,
         displayName: '米木歩',
         photoUrl: 'assets/icon/icon.png',
-        role: 'leader',
         createdAt: DateTime.now(),
       );
 

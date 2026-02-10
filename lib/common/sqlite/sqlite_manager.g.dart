@@ -1,26 +1,26 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'profile_notifier.dart';
+part of 'sqlite_manager.dart';
 
 // **************************************************************************
 // RiverpodGenerator
 // **************************************************************************
 
-String _$profileNotifierHash() => r'29058cf0463b3fb611dbf800e06e7d3356dbbf05';
+String _$sqliteManagerHash() => r'21cfae10286091a622458c1300f6607a354df996';
 
-/// See also [ProfileNotifier].
-@ProviderFor(ProfileNotifier)
-final profileNotifierProvider =
-    NotifierProvider<ProfileNotifier, ProfileUiModel>.internal(
-      ProfileNotifier.new,
-      name: r'profileNotifierProvider',
+/// See also [SqliteManager].
+@ProviderFor(SqliteManager)
+final sqliteManagerProvider =
+    AsyncNotifierProvider<SqliteManager, Database>.internal(
+      SqliteManager.new,
+      name: r'sqliteManagerProvider',
       debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
           ? null
-          : _$profileNotifierHash,
+          : _$sqliteManagerHash,
       dependencies: null,
       allTransitiveDependencies: null,
     );
 
-typedef _$ProfileNotifier = Notifier<ProfileUiModel>;
+typedef _$SqliteManager = AsyncNotifier<Database>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package
