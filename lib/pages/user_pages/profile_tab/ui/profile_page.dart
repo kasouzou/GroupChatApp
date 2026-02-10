@@ -1,7 +1,7 @@
 // プロフィール画面です。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'; // 💡 追加：Riverpodのインポート
-import 'package:group_chat_app/pages/user_pages/profile_tab/service/profile_notifier.dart';
+import 'package:group_chat_app/pages/user_pages/profile_tab/service/provider/profile_notifier.dart';
 import 'package:group_chat_app/pages/user_pages/profile_tab/ui/profile_edit_page.dart';
 import 'package:group_chat_app/pages/user_pages/profile_tab/ui/settings_page.dart';
 

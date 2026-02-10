@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:group_chat_app/pages/common_parts/show_discard_dialog.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:group_chat_app/pages/user_pages/profile_tab/service/profile_notifier.dart';
+import 'package:group_chat_app/pages/user_pages/profile_tab/service/provider/profile_notifier.dart';
 
 
 // 💡 1. ConsumerStatefulWidget に変更
