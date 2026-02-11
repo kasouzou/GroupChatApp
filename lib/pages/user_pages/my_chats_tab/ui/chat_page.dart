@@ -96,7 +96,7 @@ class _ChatPageState extends State<ChatPage> {
                     return _buildMessageBubble(
                       context, 
                       name: isMe ? '自分' : '家族メンバー', 
-                      message: message.text, 
+                      message: message.message, 
                       isMe: isMe, 
                       screenWidth: screenWidth
                     );

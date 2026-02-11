@@ -13,7 +13,7 @@ class ChatService implements ChatAbstract {
       groupId: 'family_group_001',
       senderId: 'user_father', // お父さん
       role: 'leader',
-      text: '今日の夕飯は何かな？',
+      message: '今日の夕飯は何かな？',
       createdAt: DateTime.now().subtract(const Duration(minutes: 10)),
     ),
     ChatMessageModel(
@@ -21,7 +21,7 @@ class ChatService implements ChatAbstract {
       groupId: 'family_group_001',
       senderId: 'user_mother', // お母さん
       role: 'member',
-      text: '今日はハンバーグよ！',
+      message: '今日はハンバーグよ！',
       createdAt: DateTime.now().subtract(const Duration(minutes: 5)),
     ),
     ChatMessageModel(
@@ -29,7 +29,7 @@ class ChatService implements ChatAbstract {
       groupId: 'family_group_001',
       senderId: 'user_sister', // 妹
       role: 'member',
-      text: 'わーい！楽しみ！',
+      message: 'わーい！楽しみ！',
       createdAt: DateTime.now().subtract(const Duration(minutes: 2)),
     ),
   ];
@@ -63,7 +63,7 @@ class ChatService implements ChatAbstract {
       groupId: groupId,
       senderId: senderId,
       role: 'member',
-      text: text,
+      message: text,
       createdAt: DateTime.now(),
     );
 

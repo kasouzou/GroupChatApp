@@ -5,7 +5,7 @@ class ChatMessageModel {
   final String groupId;   // どの家族か
   final String senderId;  // 送信者のGoogle UID
   final String role; // 役割: "leader" または "member"
-  final String text;
+  final String message; // text that will be used on chat
   final DateTime createdAt;
 
   ChatMessageModel({
@@ -13,7 +13,7 @@ class ChatMessageModel {
     required this.groupId,
     required this.senderId,
     required this.role,
-    required this.text,
+    required this.message,
     required this.createdAt,
   });
 
@@ -31,7 +31,7 @@ class ChatMessageModel {
       groupId: json['group_id'],
       senderId: json['sender_id'],
       role: json['role'],
-      text: json['text'],
+      message: json['message'],
       createdAt: DateTime.parse(json['created_at']),
     );
   }

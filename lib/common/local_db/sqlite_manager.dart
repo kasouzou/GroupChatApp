@@ -1,3 +1,4 @@
+// DBとの接続を管理する共通クラスだぜ！必要なテーブルを作成し、そのテーブルインスタンスをリバーポッドで管理する。
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -10,15 +11,17 @@ class SqliteManager extends _$SqliteManager {
   Future<Database> build() async {
     return _initDatabase();
   }
-
+  // chat_messagesテーブルとusersテーブルを持つgroup_chat_app.dbというデータベースを作ってRiverPodでメモリインスタンス（どのクラスからでも呼び出せば参照できる）を作成する。
   Future<Database> _initDatabase() async {
     final dbPath = await getDatabasesPath();
+    // group_chat_app.db というデータベースを作る
     final path = join(dbPath, 'group_chat_app.db');
 
     return await openDatabase(
       path,
       version: 1,
       // 💡 監修ツッコミ：テーブル構造を変更した時は version を上げること
+      // chat_messages と users テーブルを持つ
       onCreate: (db, version) async {
         // --- 1. チャットメッセージテーブル ---
         // ChatMessageModel の全フィールド + 同期状態を網羅
