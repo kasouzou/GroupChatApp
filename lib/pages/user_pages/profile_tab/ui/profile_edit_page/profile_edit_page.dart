@@ -1,8 +1,10 @@
 // プロフィールの編集ページです。
 import 'package:flutter/material.dart';
-import 'package:group_chat_app/pages/common_parts/show_discard_dialog.dart';
+import 'package:group_chat_app/pages/common_widgets/show_discard_dialog.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:group_chat_app/pages/user_pages/profile_tab/service/provider/profile_notifier.dart';
+import 'package:group_chat_app/pages/user_pages/profile_tab/ui/profile_edit_page/widgets/profile_avatar_section.dart';
+import 'package:group_chat_app/pages/user_pages/profile_tab/ui/profile_edit_page/widgets/profile_text_field.dart';
 
 
 // 💡 1. ConsumerStatefulWidget に変更
@@ -41,6 +43,9 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
 
   @override
   Widget build(BuildContext context) {
+    // 💡 stateから現在の「編集中URL」を取得する
+    final editingPhotoUrl = ref.watch(profileNotifierProvider.select((s) => s.editingPhotoUrl));
+
     // 💡 5. 保存中かどうかを監視（ボタンの無効化やグルグル表示に使う）
     final isSaving = ref.watch(profileNotifierProvider.select((s) => s.isSaving));
 
@@ -116,9 +121,15 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
                           const SizedBox(height: 10),
                           const Divider(height: 1, color: Colors.white24),
                           const SizedBox(height: 16),
-                          _buildAvatarSection(),
+                          ProfileAvatarSection(
+                            editingPhotoUrl: editingPhotoUrl,
+                            isSaving: isSaving,
+                            onTap: () {
+                              ref.read(profileNotifierProvider.notifier).pickAndUploadImage();
+                            },
+                          ),
                           const SizedBox(height: 16),
-                          _buildField(
+                          ProfileTextField(
                             label: '表示名',
                             controller: _nameController,
                             validator: (value) {
@@ -146,105 +157,7 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
     );
   }
 
-  Widget _buildAvatarSection() {
-    // 💡 stateから現在の「編集中URL」を取得する
-    final editingPhotoUrl = ref.watch(profileNotifierProvider.select((s) => s.editingPhotoUrl));
-    final isSaving = ref.watch(profileNotifierProvider.select((s) => s.isSaving));
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: [
-            Color.fromARGB(210, 0, 6, 117),
-            Color.fromARGB(120, 102, 126, 234),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: InkWell(// 💡 全体をタップ可能にする
-        onTap: isSaving ? null : () => ref.read(profileNotifierProvider.notifier).pickAndUploadImage(),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 32,
-                // 💡 編集中URLがあればそれを表示、なければ元の画像
-                // アップロード直後の新しい画像、もしくは startEditing でコピーされた「今の画像」が表示される。
-                backgroundImage: editingPhotoUrl.startsWith('http')
-                  ? NetworkImage(editingPhotoUrl) as ImageProvider
-                  : const AssetImage('assets/image/treatGemini.png'),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'プロフィール画像',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      isSaving ? 'アップロード中...' : 'タップして画像を変更',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.85),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.camera_alt, color: Colors.white), // 💡 変更ボタンをアイコンに
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildField({
-    required String label,
-    required TextEditingController controller,
-    int maxLines = 1,
-    TextInputType? keyboardType,
-    String? Function(String?)? validator,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: [
-            Color.fromARGB(200, 0, 0, 0),
-            Color.fromARGB(110, 0, 0, 0),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: TextFormField(
-        controller: controller,
-        maxLines: maxLines,
-        keyboardType: keyboardType,
-        validator: validator,
-        style: const TextStyle(color: Colors.white, fontSize: 14),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: TextStyle(color: Colors.white.withOpacity(0.8)),
-          border: InputBorder.none,
-          errorStyle: const TextStyle(color: Colors.amberAccent),
-        ),
-      ),
-    );
-  }
   // 💡 保存処理のロジックを分離
   Future<void> _onSavePressed() async{
     final isValid = _formKey.currentState?.validate() ?? false;

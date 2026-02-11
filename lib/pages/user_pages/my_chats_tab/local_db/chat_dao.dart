@@ -2,7 +2,18 @@
 // 「疎結合」にするために、DB全体ではなく「チャットメッセージのSQLiteデータベース」を扱う専用のクラスを切り出す.
 // SqliteManager で作成された 'chat_messages' テーブルを操作するぜ！
 
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:group_chat_app/common/local_db/sqlite_manager.dart';
+
+part 'chat_dao.g.dart';
+
+// Riverpod should write out of the class.
+@riverpod
+Future<ChatDao> chatDao(ChatDaoRef ref) async {
+  final db = await ref.watch(sqliteManagerProvider.future);
+  return ChatDao(db);
+}
 
 class ChatDao {
   final Database _db;
