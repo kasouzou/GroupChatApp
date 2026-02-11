@@ -1,0 +1,113 @@
+lib/
+├── main.dart
+│
+├── core/                              # 以前の common を整理して core に
+│   ├── database/
+│   │   ├── sqlite_manager.dart        # ← common/local_db/sqlite_manager.dart
+│   │   └── sqlite_manager.g.dart
+│   │
+│   ├── network/
+│   │   ├── connectivity_provider.dart # ← common/network_status_manager/provider/connectivity_provider.dart
+│   │   └── network_awareness_widget.dart  # ← common/network_status_manager/ui/NetworkAwarenessWrapper.dart
+│   │
+│   ├── models/
+│   │   └── user_model.dart            # ← common/models/user_model.dart
+│   │
+│   ├── error/
+│   │   └── app_exception.dart
+│   │
+│   └── utils/
+│       └── explain.md                 # ドキュメント系は残しておく（任意）
+│
+├── shared/                            # UIで横断的に使うWidget等
+│   ├── widgets/
+│   │   └── show_discard_dialog.dart   # ← pages/common_widgets/show_discard_dialog.dart
+│   └── theme/
+│       └── app_theme.dart
+│
+├── features/                          # Feature（＝現状の pages/user_pages と login_page を移動）
+│   ├── auth/                          # login_page系
+│   │   ├── presentation/
+│   │   │   ├── pages/
+│   │   │   │   ├── login_page.dart    # ← pages/login_page/login_page.dart
+│   │   │   │   └── splash_screen.dart # ← pages/splash_screen.dart (移動)
+│   │   │   └── widgets/
+│   │   │       └── google_sign_in_button.dart   # ← pages/login_page/google_login/google_sign_in_button.dart
+│   │   │
+│   │   ├── application/
+│   │   │   └── google_login_usecase.dart        # 新規：ロジックをここに移す
+│   │   │
+│   │   ├── domain/
+│   │   │   └── auth_repository.dart             # 新規抽象
+│   │   │
+│   │   └── data/
+│   │       └── auth_repository_impl.dart
+│   │
+│   ├── chat/                           # my_chats_tab の移行先
+│   │   ├── presentation/
+│   │   │   ├── pages/
+│   │   │   │   ├── my_chats_page.dart  # ← pages/user_pages/my_chats_tab/ui/my_chats_page.dart
+│   │   │   │   └── chat_page.dart      # ← pages/user_pages/my_chats_tab/ui/chat_page.dart
+│   │   │   ├── widgets/
+│   │   │   └── providers/
+│   │   │       └── chat_notifier.dart  # ← pages/user_pages/my_chats_tab/services or provider を分離して移す
+│   │   │
+│   │   ├── application/
+│   │   │   ├── fetch_messages_usecase.dart
+│   │   │   └── send_message_usecase.dart
+│   │   │
+│   │   ├── domain/
+│   │   │   ├── chat_repository.dart                # ← pages/user_pages/my_chats_tab/abstract/chat_abstract.dart を改名して移す
+│   │   │   └── entities/
+│   │   │       └── chat_message.dart               # ← pages/user_pages/my_chats_tab/model/chat_message_model.dart
+│   │   │
+│   │   └── data/
+│   │       ├── datasource/
+│   │       │   └── chat_local_datasource.dart     # ← pages/user_pages/my_chats_tab/local_db/chat_dao.dart をラップ
+│   │       └── chat_repository_impl.dart          # ← services/chat_service.dart を分割して実装
+│   │
+│   ├── profile/
+│   │   ├── presentation/
+│   │   │   ├── pages/
+│   │   │   │   ├── profile_page.dart             # ← pages/user_pages/profile_tab/ui/profile_page.dart
+│   │   │   │   ├── settings_page.dart            # ← pages/user_pages/profile_tab/ui/settings_page.dart
+│   │   │   │   └── profile_edit_page.dart        # ← pages/user_pages/profile_tab/ui/profile_edit_page/profile_edit_page.dart
+│   │   │   ├── widgets/
+│   │   │   │   ├── profile_avatar_section.dart   # ← same
+│   │   │   │   └── profile_text_field.dart       # ← same
+│   │   │   └── providers/
+│   │   │       └── profile_notifier.dart         # ← pages/user_pages/profile_tab/service/provider/profile_notifier.dart
+│   │   │
+│   │   ├── application/
+│   │   │   ├── update_profile_usecase.dart       # ← 分割: profile_service の責務から切り出す
+│   │   │   └── upload_avatar_usecase.dart
+│   │   │
+│   │   ├── domain/
+│   │   │   ├── profile_repository.dart           # ← pages/user_pages/profile_tab/abstract/profile_abstract.dart を domain 抽象に再編
+│   │   │   └── entities/
+│   │   │       └── profile.dart                  # ← profile_ui_model.dart をエンティティに整備
+│   │   │
+│   │   └── data/
+│   │       ├── datasource/
+│   │       │   └── profile_local_datasource.dart # ← profile_service の DB 部分を移す（chat_dao 方式に合わせる）
+│   │       └── profile_repository_impl.dart      # ← profile_service の実装をここに移す（API / VPS / SQLite 切替をここで対応）
+│   │
+│   └── new_chat/
+│       ├── presentation/
+│       │   ├── pages/
+│       │   │   ├── new_chat_page.dart            # ← pages/user_pages/new_chat_tab/ui/new_chat_page.dart
+│       │   │   ├── make_chat_page.dart           # ← same
+│       │   │   └── add_member_page.dart          # ← same
+│       │   └── providers/
+│       │
+│       ├── application/
+│       │   └── create_chat_usecase.dart
+│       │
+│       ├── domain/
+│       │   └── new_chat_repository.dart
+│       │
+│       └── data/
+│           └── new_chat_repository_impl.dart
+│
+└── ui/
+    └── youtube_like_bottom_navigation_bar.dart    # ← pages/user_pages/youtube_like_bottom_navigation_bar.dart
