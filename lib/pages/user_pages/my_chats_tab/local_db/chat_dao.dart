@@ -17,7 +17,7 @@ class ChatDao {
 
   // 💡 2. 未送信メッセージだけを救出
   // ユーザーが「再送ボタン」を押した時や、UIで「未送信」アイコンを出すために使う。
-  // 勝手にバックグラウンド送信はしない方針なので、主に表示や手動リトライ用だな。
+  // 勝手にバックグラウンドでVPSに送信はしない方針なので、主に表示や手動リトライ用だな。
   Future<List<Map<String, dynamic>>> getUnsentMessages() async {
     return await _db.query(
       'chat_messages',
