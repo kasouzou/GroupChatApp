@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import 'package:google_fonts/google_fonts.dart';// Google Fontsを使うために必要
-import 'package:group_chat_app/common/network_status_manager/ui/NetworkAwarenessWrapper.dart';
-import 'package:group_chat_app/pages/splash_screen.dart'; 
+import 'package:group_chat_app/core/network/network_awareness_widget.dart';
+import 'package:group_chat_app/features/auth/presentation/pages/splash_screen.dart'; 
+import 'package:group_chat_app/shared/theme/app_theme.dart';
 
 void main() {
   runApp(const MyApp());
@@ -16,14 +16,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Group Chat App',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-        // アプリ全体のテキストテーマを Google Fonts で上書きする
-        textTheme: GoogleFonts.notoSansJpTextTheme(
-          Theme.of(context).textTheme, 
-        ),
-      ),
+      theme: AppTheme.light(context),
       // 💡 ここがポイント！全画面の Scaffold を強制的にラップする。
       // オフライン／オンラインを監視してオフラインならどの画面に居ても通知を出せる。
       // 要ははアプリ全体を包んでいるイメージ
