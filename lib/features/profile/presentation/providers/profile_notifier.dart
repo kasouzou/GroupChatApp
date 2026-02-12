@@ -1,8 +1,9 @@
 // プロフィール画面の編集の成功をUIに反映するために、ストリームを監視して状態を更新するProfileNotifierの実装です。
 
 import 'dart:ui';
+import 'package:group_chat_app/features/profile/application/profile_usecase.dart';
+import 'package:group_chat_app/features/profile/application/profile_usecase_provider.dart';
 import 'package:group_chat_app/features/profile/presentation/models/profile_ui_model.dart';
-import 'package:group_chat_app/features/profile/data/profile_service.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:image_picker/image_picker.dart';
@@ -15,20 +16,20 @@ class ProfileNotifier extends _$ProfileNotifier {
   @override
   ProfileUiModel build() {
     // 💡 1. サービスの取得
-    final profileService = ref.watch(profileServiceProvider);
+    final profileUseCase = ref.watch(profileUseCaseProvider);
 
     // 💡 2. 監視を開始
     // build()が走るたびに古いsubscriptionは破棄されるよう、下でref.onDisposeを呼ぶ
-    _listenToUserChanges(profileService);
+    _listenToUserChanges(profileUseCase);
 
     // 💡 3. 初期状態
     // ProfileServiceから現在のユーザー情報の最新値を同期的に取れるならそれを使うのがベター
     // この最新値を、Streamで受け取るさらに新しい情報で更新し、UIに反映していくのがこのファイルの内容
-    return ProfileUiModel.initial(profileService.currentUser);
+    return ProfileUiModel.initial(profileUseCase.currentUser);
   }
 
-  void _listenToUserChanges(ProfileService profileService) {
-    final subscription = profileService.userStream.listen((latestUser) {
+  void _listenToUserChanges(ProfileUseCase profileUseCase) {
+    final subscription = profileUseCase.userStream.listen((latestUser) {
       // 💡 ツッコミ！: 
       // ストリームからデータが流れてきたら、現在の状態(state)をコピーして更新
       state = state.copyWith(
@@ -72,11 +73,14 @@ class ProfileNotifier extends _$ProfileNotifier {
     );
 
     try {
-      final profileService = ref.read(profileServiceProvider);
-      await profileService.updateProfile(updatedUser);
+      final profileUseCase = ref.read(profileUseCaseProvider);
+      await profileUseCase.updateProfile(updatedUser);
       // ツッコミ！: 成功したら Service 側の Stream が最新の updatedUser を流してくれるから、
       // ここで state = ... を書かなくても、自動的に build() が走って画面が更新される。これが最強。
     } catch (e) {
+
+
+      
       state = state.copyWith(isSaving: false, errorMessage: '保存に失敗しました');
     }
   }
@@ -114,9 +118,9 @@ class ProfileNotifier extends _$ProfileNotifier {
     state = state.copyWith(isSaving: true, errorMessage: null);
 
     try {
-      final profileService = ref.read(profileServiceProvider);
+      final profileUseCase = ref.read(profileUseCaseProvider);
       // 💡 切り抜かれたファイルパスをサービスに渡す
-      final uploadedUrl = await profileService.uploadImage(croppedFile.path);
+      final uploadedUrl = await profileUseCase.uploadImage(croppedFile.path);
       
       // 4. UI状態（編集中のURL）を更新
       // ここではまだDBには保存せず、メモリ上の「編集中」として保持する

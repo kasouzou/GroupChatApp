@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:group_chat_app/shared/widgets/show_discard_dialog.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:group_chat_app/features/profile/presentation/providers/profile_notifier.dart';
-import 'package:group_chat_app/features/profile/presentation/widgets/profile_avatar_section.dart';
-import 'package:group_chat_app/features/profile/presentation/widgets/profile_text_field.dart';
+import 'package:group_chat_app/features/profile/presentation/pages/widgets/profile_avatar_section.dart';
+import 'package:group_chat_app/features/profile/presentation/pages/widgets/profile_text_field.dart';
 
 
 // 💡 1. ConsumerStatefulWidget に変更
