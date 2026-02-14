@@ -25,8 +25,5 @@ class ProfileLocalDatasourceImpl implements ProfileLocalDataSource {
   @override
   Future<UserModel?> getProfile(String userId) => _dao.getUser(userId);
 
-
-
   void dispose() => _controller.close();
 }
-

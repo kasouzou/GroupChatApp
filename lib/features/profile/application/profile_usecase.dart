@@ -9,8 +9,9 @@ class ProfileUseCase {
 
   ProfileUseCase(this.repository);
 
-  Future<void> loadUser(String userId) async {
+  Future<UserModel> loadUser(String userId) async {
     final user = await repository.fetchUser(userId);
+    return user;
   }
 
   Future<UserModel> saveProfile({

@@ -19,21 +19,52 @@ class ProfileEditPage extends ConsumerStatefulWidget {
 class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
   final _formKey = GlobalKey<FormState>();
 
+  // Controller は最初に空で作っておき、load -> startEditing 後に初期値を入れる。
   late final TextEditingController _nameController;
 
   @override
   void initState() {
     super.initState();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    _nameController = TextEditingController();
+
+    // UI が描画された後にロード（ProfilePage が既にロード済みなら即座に startEditing する）
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      ref.read(profileNotifierProvider.notifier).startEditing();
+
+      final notifier = ref.read(profileNotifierProvider.notifier);
+
+      // 1) 安全策：state.user が未ロードなら loadUser する（ProfilePage 経由でロード済なら skip）
+      final current = ref.read(profileNotifierProvider).user;
+      if (current.id.isEmpty) {
+        // TODO: 実運用では authProvider 等から userId を取得する
+        final userId = /* e.g. ref.read(authProvider).currentUserId */ '今のユーザーID';
+        await notifier.loadUser(userId);
+        if (!mounted) return;
+      }
+
+      // 2) load が終わった（もしくは既にロード済み）ので編集状態に移行
+      notifier.startEditing();
+
+      // 3) Notifier の editingName を初期値として controller にセット
+      final editingName = ref.read(profileNotifierProvider).editingName;
+      _nameController.text = editingName;
     });
 
-    final editingName = ref.read(profileNotifierProvider).editingName;
-    _nameController = TextEditingController(text: editingName);
+    // Provider の editingName が後で変わったときに controller を追従させる（例：外部で編集名が更新された）
+    ref.listen<String>(
+      profileNotifierProvider.select((s) => s.editingName),
+      (previous, next) {
+        // ユーザーが直接入力中にテキストを上書きすると UX が悪いので、
+        // controller.text と一致する場合は更新しない（無駄なカーソルジャンプを防ぐ）
+        if (_nameController.text != next) {
+          _nameController.text = next;
+          // カーソルを末尾に戻す（入力中のジャンプを最小化）
+          _nameController.selection = TextSelection.collapsed(offset: _nameController.text.length);
+        }
+      },
+    );
   }
-
 
   @override
   void dispose() {
@@ -46,17 +77,23 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
     // 💡 stateから現在の「編集中URL」を取得する
     final editingPhotoUrl = ref.watch(profileNotifierProvider.select((s) => s.editingPhotoUrl));
 
-    // 💡 5. 保存中かどうかを監視（ボタンの無効化やグルグル表示に使う）
+    // 💡 保存中かどうかを監視（ボタンの無効化やグルグル表示に使う）
     final isSaving = ref.watch(profileNotifierProvider.select((s) => s.isSaving));
 
-    // 💡 6. エラーが発生したらスナックバーを出す（副作用の監視）
-    ref.listen(profileNotifierProvider.select((s) => s.errorMessage), (previous, next) {
-      if (next != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(next), backgroundColor: Colors.redAccent),
-        );
-      }
-    });
+    // エラー通知は副作用として listen で扱う（build 内で呼ぶのは OK）
+    ref.listen<String?>(
+      profileNotifierProvider.select((s) => s.errorMessage),
+      (previous, next) {
+        if (next != null) {
+          // ScaffoldMessenger を使って SnackBar を表示
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(next), backgroundColor: Colors.redAccent),
+            );
+          }
+        }
+      },
+    );
 
     return Container(
       decoration: BoxDecoration(
@@ -81,6 +118,12 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
               if (shouldDiscard != true) {
                 return;
               }
+              // 編集をキャンセルして元の state（編集前のユーザープロフィールの状態） に戻す
+              ref.read(profileNotifierProvider.notifier).cancelEditing();
+
+              // もし画面が破棄されてたら何もしない。
+              if (!mounted) return;
+
               debugPrint('×ボタンが押されました。"done" を持って前の画面へ戻ります[(プロフィール編集画面)]');
               Navigator.pop(context, 'cancel');
             },
@@ -125,7 +168,8 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
                             editingPhotoUrl: editingPhotoUrl,
                             isSaving: isSaving,
                             onTap: () {
-                              ref.read(profileNotifierProvider.notifier).pickAndUploadImage();
+                              // 画像選択（ローカル保存のみ。アップロードは save 時に UseCase が行う）
+                              ref.read(profileNotifierProvider.notifier).pickImageFromGallery();
                             },
                           ),
                           const SizedBox(height: 16),
@@ -159,6 +203,7 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
 
 
   // 💡 保存処理のロジックを分離
+  // 保存処理はここに集約（UI -> Notifier）
   Future<void> _onSavePressed() async{
     final isValid = _formKey.currentState?.validate() ?? false;
     if (!isValid) return;
@@ -166,13 +211,25 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
     // Notifierを読み込む
     final notifier = ref.read(profileNotifierProvider.notifier);
 
+    // 1. 💡 実行前に、今のテキストフィールドの内容を Notifier に同期させる！
+    // こうしないと、キーボードで打った最新の名前が Notifier の state に反映されないぜ。
+    notifier.changeEditingName(_nameController.text);
+
+    // 2. 💡 保存処理を実行（引数なしでOKなように Notifier を作ったからな！） 
     // 💡  Notifier を呼んで VPS に保存！
-    await notifier.saveProfile(
-      newName: _nameController.text,
-    );
-    // 💡 9. エラーがなければ画面を閉じる
+    await notifier.saveProfile();
+
+    // 3. 💡 エラーがなければ画面を閉じる
+    // （ここでの ref.read は「保存完了後」の最新状態を確認しているから正しいぜ）
+    // ③ 非同期処理後の mounted チェック
+    // await の後に context を使うときは、必ず if (mounted) をチェックするのが Flutter プログラミングの鉄則だ。
+    // 保存中にユーザーが無理やり画面を閉じちゃった場合にクラッシュするのを防げるぜ。
+    //  1. まず「画面がまだ存在するか」をチェック。存在しないなら何もしない。
+    if (!mounted) return;
+
+    // 2. 画面が存在するなら、エラーがないか確認して pop する
     final error = ref.read(profileNotifierProvider).errorMessage;
-    if (error == null && mounted) {
+    if (error == null) {
       Navigator.pop(context, 'saved');
     }
   }

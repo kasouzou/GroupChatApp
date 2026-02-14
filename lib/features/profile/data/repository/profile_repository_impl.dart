@@ -25,7 +25,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
     return latestUser;
   }
 
-  // いわゆる保存メソッドのこと広く更新である。　
+  // いわゆる保存メソッドのこと.広く更新である。　
   @override
   Future<void> updateProfile(UserModel user) async {
     await local.updateProfile(user); // SQLite保存

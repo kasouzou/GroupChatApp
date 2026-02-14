@@ -17,6 +17,60 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   bool _isSettingsPressed = false;
 
   @override
+  void initState(){
+
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+
+      if(!mounted) return;
+      // userIdは認証や別プロバイダから取得する予定
+      final userId = /* e.g.ref.read.(authProvider).userId */ '今のユーザーID';
+      ref.read(profileNotifierProvider.notifier).loadUser(userId);
+    });
+
+  }
+  
+  // SettingsPageへの遷移メソッド
+  Future<void> _openSettings () async {
+    debugPrint('--- 今は[profile_page(プロフィール画面)]にいます。 遷移開始: SettingsPageへ (rootNavigator: true(意味：ボトムナビゲーションバーの画面スタックじゃなくてRootNavigatorの画面スタックに積むよ)) ---');
+    // rootNavigator: true でボトムバーを隠す世界へ
+    final result = await Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute(
+        builder: (context) => SettingsPage(),
+        settings: const RouteSettings(name: 'SettingsPage'),
+      )
+    );
+    debugPrint('--- 今は[profile_page(プロフィール画面)]にいます。 SettingsPageから戻りました。受け取った結果: $result ---');
+  }
+
+  /// 編集画面へ遷移する。未ロードならロードしてから startEditing -> push することで
+  /// ProfileEditPage 側で state.user が確実に存在するようにする（引き継ぎの保証）。
+  Future<void> _openProfileEdit () async{
+    final notifier = ref.read(profileNotifierProvider.notifier);
+    final state = ref.read(profileNotifierProvider);
+
+    // userId が空なら（未ロードなら）ここでロードする。userId の取得方法はアプリ次第。
+    if (state.user.id.isEmpty) {
+      final userId = /* e.g. ref.read(authProvider).currentUserId */ 'ユーザーID';
+      await notifier.loadUser(userId);
+    }
+
+    // 編集用フィールドにコピーしておく
+    notifier.startEditing();
+
+    // 遷移（rootNavigator を使ってボトムナビゲーションの外に積む設計）
+    debugPrint('--- 今は[profile_page(プロフィール画面)]にいます。 遷移開始: プロフィール編集画面へ (rootNavigator: true(意味：ボトムナビゲーションバーの画面スタックじゃなくてRootNavigatorの画面スタックに積むよ)) ---');
+    // rootNavigator: true でボトムバーを隠す世界へ
+    final result = await Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute(
+        builder: (context) => ProfileEditPage(),
+        settings: const RouteSettings(name: 'ProfileEditPage')
+      )
+    );
+    debugPrint('--- 今は[profile_page(プロフィール画面)]にいます。 プロフィール編集画面から戻りました。受け取った結果: $result ---');
+  } 
+
+  @override
   Widget build(BuildContext context) {
     // 💡 2. キャッシュされた最新のユーザー情報を取得（監視開始）
     // これにより、編集画面で保存が成功すると、この build() が自動で再実行されるぜ
@@ -25,7 +79,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
 
     // 画面サイズを取得して、横向きかどうかを判定する（マクロな視点）
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    // final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Container(
       decoration: BoxDecoration(
@@ -55,17 +109,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               onTapDown: (_) => setState(() => _isSettingsPressed = true),
               onTapUp: (_) => setState(() => _isSettingsPressed = false),
               onTapCancel: () => setState(() => _isSettingsPressed = false),
-              onTap: () async{
-                debugPrint('--- 今は[profile_page(プロフィール画面)]にいます。 遷移開始: SettingsPageへ (rootNavigator: true(意味：ボトムナビゲーションバーの画面スタックじゃなくてRootNavigatorの画面スタックに積むよ)) ---');
-                // rootNavigator: true でボトムバーを隠す世界へ
-                final result = await Navigator.of(context, rootNavigator: true).push(
-                  MaterialPageRoute(
-                    builder: (context) => const SettingsPage(),
-                    settings: const RouteSettings(name: 'SettingsPage'),
-                  ),
-                );
-                debugPrint('--- 今は[profile_page(プロフィール画面)]にいます。 SettingsPageから戻りました。受け取った結果: $result ---');
-              },
+              onTap: _openSettings,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: AnimatedSwitcher(
@@ -132,17 +176,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             clipBehavior: Clip.antiAlias,
                             borderRadius: BorderRadius.circular(12),
                             child: InkWell(
-                              onTap: () async{
-                                debugPrint('--- 今は[profile_page(プロフィール画面)]にいます。 遷移開始: プロフィール編集画面へ (rootNavigator: true(意味：ボトムナビゲーションバーの画面スタックじゃなくてRootNavigatorの画面スタックに積むよ)) ---');
-                                // rootNavigator: true でボトムバーを隠す世界へ
-                                final result = await Navigator.of(context, rootNavigator: true).push(
-                                  MaterialPageRoute(
-                                    builder: (context) => const ProfileEditPage(),
-                                    settings: const RouteSettings(name: 'ProfileDetailsPage'),
-                                  ),
-                                );
-                                debugPrint('--- 今は[profile_page(プロフィール画面)]にいます。 プロフィール編集画面から戻りました。受け取った結果: $result ---');
-                              },
+                              onTap: _openProfileEdit,
                               splashColor: Colors.white.withOpacity(0.2),
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),

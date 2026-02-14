@@ -1,3 +1,4 @@
+// Data Access Object
 import 'package:group_chat_app/core/database/sqlite_manager.dart';
 import 'package:group_chat_app/core/models/user_model.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
