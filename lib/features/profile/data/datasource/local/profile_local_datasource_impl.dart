@@ -8,6 +8,8 @@ import 'package:group_chat_app/features/profile/data/datasource/local/profile_lo
 class ProfileLocalDatasourceImpl implements ProfileLocalDataSource {
   late final ProfileDao _dao; // 💡 DBを直接持たず、DAOを介す
 
+  ProfileLocalDatasourceImpl(this._dao);  // 追加：DAOの注入
+
   // これがセンサー本体センサー＝Stream
   final _controller = StreamController<UserModel>.broadcast();
 
