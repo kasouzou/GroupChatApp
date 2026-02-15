@@ -7,18 +7,21 @@ import 'package:group_chat_app/features/profile/data/datasource/local/profile_lo
 // sqlite/profile_local_datasource_impl.dart
 class ProfileLocalDatasourceImpl implements ProfileLocalDataSource {
   late final ProfileDao _dao; // 💡 DBを直接持たず、DAOを介す
+
+  // これがセンサー本体センサー＝Stream
   final _controller = StreamController<UserModel>.broadcast();
 
   @override
   Future<void> updateProfile(UserModel user) async {
+    // ローカルDBに保存する。
     await _dao.updateUser(user);
     _controller.add(user); // ここで購読者に通知
   }
   
   @override
   Stream<UserModel> watchProfile(String userId) {
-    // 初回値を流す
-    _dao.getUser(userId).then((u) { if (u!=null) _controller.add(u); });
+    // 最初に現在のデータを棚(SQLite)から取ってきて流してやる（初期表示用）
+    _dao.getUser(userId).then((user) { if (user!=null) _controller.add(user); });
     return _controller.stream;
   }
 

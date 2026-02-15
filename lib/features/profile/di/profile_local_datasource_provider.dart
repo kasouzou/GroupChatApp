@@ -1,6 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'profile_local_datasource.dart';
-import 'profile_local_datasource_impl.dart';
+import '../data/datasource/local/profile_local_datasource.dart';
+import '../data/datasource/local/profile_local_datasource_impl.dart';
 
 part 'profile_local_datasource_provider.g.dart';
 

@@ -10,6 +10,7 @@ class ProfileUseCase {
   ProfileUseCase(this.repository);
 
   Future<UserModel> loadUser(String userId) async {
+    // ここのFetchUser()はローカルを読みに行く
     final user = await repository.fetchUser(userId);
     return user;
   }
@@ -33,10 +34,8 @@ class ProfileUseCase {
       photoUrl: finalPhotoUrl,
     );
 
-    // ③ ローカルDB保存
-    await repository.updateProfile(updatedUser);
-
-    // ④ VPS送信（本来は別メソッドに分離しても良い）
+    // ③ プロフィール更新。
+    // ※プロフィール更新の流れはローカル保存成功ならVPS保存→VPS保存成功ならローカルの更新日時をサーバータイムに更新して終了と言う流れだがここではそれを抽象化してざっくりプロフィール更新としている。
     await repository.updateProfile(updatedUser);
 
     return updatedUser;

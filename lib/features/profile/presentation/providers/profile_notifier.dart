@@ -3,7 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:group_chat_app/core/models/user_model.dart';
-import 'package:group_chat_app/features/profile/application/profile_usecase_provider.dart';
+import 'package:group_chat_app/features/profile/di/profile_usecase_provider.dart';
 import 'package:group_chat_app/features/profile/presentation/models/profile_ui_model.dart';
 
 part 'profile_notifier.g.dart';

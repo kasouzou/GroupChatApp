@@ -15,14 +15,11 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
   @override
   Future<UserModel> fetchUser(String userId) async {
-    //本来はここでVPSから取り寄せるコードを書く
-    final latestUser = UserModel(
-      id: userId,
-      displayName: '米木歩',
-      photoUrl: 'assets/icon/icon.png',
-      createdAt: DateTime.now(),
-    );
-    return latestUser;
+    // このFetchUserはSSOT原則により、ローカルDBを取得する。リモートには取りに行かない。ローカルDBを最新に保つのは別のクラス。
+    final user = await local.getProfile(userId);
+    if (user == null) throw Exception('User not found');
+
+    return user;
   }
 
   // いわゆる保存メソッドのこと.広く更新である。　
