@@ -19,7 +19,7 @@ class SqliteManager extends _$SqliteManager {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       // 💡 監修ツッコミ：テーブル構造を変更した時は version を上げること
       // chat_messages と users テーブルを持つ
       onCreate: (db, version) async {
@@ -46,10 +46,31 @@ class SqliteManager extends _$SqliteManager {
             display_name TEXT NOT NULL,
             photo_url TEXT NOT NULL,
             created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
             sync_status INTEGER NOT NULL DEFAULT 0 -- 0:未送信, 1:送信済:プロフィールも同期管理が必要なので0とした
           )
         ''');
       },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await _addUpdatedAtColumnIfNeeded(db, 'users');
+          // 既存実装で user テーブル名を使っているケースにも対応
+          await _addUpdatedAtColumnIfNeeded(db, 'user');
+        }
+      },
+    );
+  }
+
+  Future<void> _addUpdatedAtColumnIfNeeded(Database db, String tableName) async {
+    final tableInfo = await db.rawQuery('PRAGMA table_info($tableName)');
+    if (tableInfo.isEmpty) return;
+
+    final hasUpdatedAt = tableInfo.any((column) => column['name'] == 'updated_at');
+    if (hasUpdatedAt) return;
+
+    await db.execute('ALTER TABLE $tableName ADD COLUMN updated_at TEXT');
+    await db.execute(
+      'UPDATE $tableName SET updated_at = created_at WHERE updated_at IS NULL',
     );
   }
 }

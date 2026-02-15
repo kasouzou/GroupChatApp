@@ -19,7 +19,7 @@ class ProfileLocalDatasourceImpl implements ProfileLocalDataSource {
     await _dao.updateUser(user);
     _controller.add(user); // ここで購読者に通知
   }
-  
+
   @override
   Stream<UserModel> watchProfile(String userId) {
     // 最初に現在のデータを棚(SQLite)から取ってきて流してやる（初期表示用）

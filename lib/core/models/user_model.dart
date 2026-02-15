@@ -8,12 +8,14 @@ class UserModel {
   final String displayName;  // 表示名
   final String photoUrl;     // アイコン画像のURL
   final DateTime createdAt;  // 作成日時
+  final DateTime updatedAt;  // 更新日時
 
   const UserModel({
     required this.id,
     required this.displayName,
     required this.photoUrl,
     required this.createdAt,
+    required this.updatedAt,
   });
 
   // --- シリアライズ（DBとのやり取り用） ---
@@ -27,6 +29,11 @@ class UserModel {
       createdAt: map['created_at'] != null 
           ? DateTime.parse(map['created_at']) 
           : DateTime.now(),
+      updatedAt: map['updated_at'] != null
+          ? DateTime.parse(map['updated_at'])
+          : (map['created_at'] != null
+              ? DateTime.parse(map['created_at'])
+              : DateTime.now()),
     );
   }
 
@@ -37,6 +44,7 @@ class UserModel {
       'display_name': displayName,
       'photo_url': photoUrl,
       'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
     };
   }
 
@@ -44,6 +52,7 @@ class UserModel {
   UserModel copyWith({
     String? displayName,
     String? photoUrl,
+    DateTime? updatedAt,
     String? role,
   }) {
     return UserModel(
@@ -51,6 +60,7 @@ class UserModel {
       displayName: displayName ?? this.displayName,
       photoUrl: photoUrl ?? this.photoUrl,
       createdAt: createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 
@@ -61,7 +71,8 @@ class UserModel {
       id: '',
       displayName: '',
       photoUrl: '',
-      createdAt: DateTime.now(),  
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
     );
   }
 }

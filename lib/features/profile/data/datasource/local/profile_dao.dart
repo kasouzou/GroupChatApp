@@ -20,7 +20,7 @@ class ProfileDao {
   /// 💡 ユーザーの保存または更新 (Upsert)
   Future<void> updateUser(UserModel user) async {
     await _db.insert(
-      'user',
+      'users',
       _toMap(user),
       conflictAlgorithm: ConflictAlgorithm.replace, // 既にあれば上書き
     );
@@ -29,7 +29,7 @@ class ProfileDao {
   /// 💡 ID指定でユーザーを取得
   Future<UserModel?> getUser(String userId) async {
     final List<Map<String, dynamic>> maps = await _db.query(
-      'user',
+      'users',
       where: 'id = ?',
       whereArgs: [userId],
     );
@@ -41,7 +41,7 @@ class ProfileDao {
   /// 💡 同期ステータスのみを更新（VPS送信成功時などに使用）
   Future<void> updateSyncStatus(String userId, int status) async {
     await _db.update(
-      'user',
+      'users',
       {'sync_status': status},
       where: 'id = ?',
       whereArgs: [userId],
@@ -55,6 +55,7 @@ class ProfileDao {
       'display_name': user.displayName,
       'photo_url': user.photoUrl,
       'created_at': user.createdAt.toIso8601String(),
+      'updated_at': user.updatedAt.toIso8601String(),
       // syncStatus などのフィールドが UserModel にある場合はここに追加
       'sync_status': 0, 
     };
@@ -67,6 +68,9 @@ class ProfileDao {
       displayName: map['display_name'] as String,
       photoUrl: map['photo_url'] as String,
       createdAt: DateTime.parse(map['created_at'] as String),
+      updatedAt: map['updated_at'] != null
+          ? DateTime.parse(map['updated_at'] as String)
+          : DateTime.parse(map['created_at'] as String),
     );
   }
 }

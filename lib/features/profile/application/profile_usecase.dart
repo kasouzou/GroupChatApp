@@ -36,8 +36,7 @@ class ProfileUseCase {
 
     // ③ プロフィール更新。
     // ※プロフィール更新の流れはローカル保存成功ならVPS保存→VPS保存成功ならローカルの更新日時をサーバータイムに更新して終了と言う流れだがここではそれを抽象化してざっくりプロフィール更新としている。
-    await repository.updateProfile(updatedUser);
-
-    return updatedUser;
+    final serverConfirmedUser = await repository.updateProfile(updatedUser);
+    return serverConfirmedUser;
   }
 }

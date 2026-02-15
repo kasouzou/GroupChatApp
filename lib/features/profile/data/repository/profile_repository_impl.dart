@@ -24,9 +24,10 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
   // いわゆる保存メソッドのこと.広く更新である。　
   @override
-  Future<void> updateProfile(UserModel user) async {
-    await local.updateProfile(user); // SQLite保存
-    await remote.updateProfile(user); // VPS送信
+  Future<UserModel> updateProfile(UserModel user) async {
+    final serverConfirmedUser = await remote.updateProfile(user); // VPS送信
+    await local.updateProfile(serverConfirmedUser); // サーバー確定値をSQLite保存
+    return serverConfirmedUser;
   }
 
   @override

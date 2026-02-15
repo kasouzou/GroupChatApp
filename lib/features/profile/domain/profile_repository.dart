@@ -5,7 +5,7 @@ abstract class ProfileRepository {
   Future<UserModel> fetchUser(String userId);
 
   /// プロフィールを更新する（外部保存の概念）
-  Future<void> updateProfile(UserModel user);
+  Future<UserModel> updateProfile(UserModel user);
 
   /// 画像ファイルをアップロードする。（外部保存の概念）
   Future<String> uploadImage(String filePath);
