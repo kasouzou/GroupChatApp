@@ -15,9 +15,10 @@ class ChatRepositoryImpl implements ChatRepository {
     _controller.close();
   }
 
+  
   @override
   Future<void> saveMessage(ChatMessageModel message) {
-    return 
+    
   }
 
   @override
