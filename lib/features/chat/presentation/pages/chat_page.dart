@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:group_chat_app/features/chat/domain/entities/chat_message_model.dart';
-import 'package:group_chat_app/features/chat/data/chat_repository_impl.dart';
+import 'package:group_chat_app/features/chat/data/repository/chat_repository_impl.dart';
 import 'package:uuid/uuid.dart';
 
 class ChatPage extends StatefulWidget {
@@ -33,22 +33,6 @@ class _ChatPageState extends State<ChatPage> {
   final String _myGoogleUid = Uuid().v4();
   final String _currentGroupId = 'family_group_001';
 
-  // 送信ボタンが押された時に呼ばれる関数
-  void _handleSubmitted(String text) {
-    if (text.trim().isEmpty) return;
-
-    final String content = _textController.text;
-    _textController.clear();
-
-    // ChatServiceにメッセージ送信を依頼
-    // UIは「送信した」という事実だけを投げればOK（疎結合！）
-    _chatService.sendMessage(
-      _currentGroupId,
-      _myGoogleUid, 
-      content
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final double screenWidth = MediaQuery.of(context).size.width;
@@ -72,13 +56,16 @@ class _ChatPageState extends State<ChatPage> {
             child: StreamBuilder<List<ChatMessageModel>>(
               stream: _chatService.watchMessages(_currentGroupId),
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting){
+                if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
                 if (!snapshot.hasData || snapshot.data!.isEmpty) {
                   return const Center(
-                    child: Text("メッセージがありません", style: TextStyle(color: Colors.white)),
+                    child: Text(
+                      "メッセージがありません",
+                      style: TextStyle(color: Colors.white),
+                    ),
                   );
                 }
 
@@ -89,18 +76,19 @@ class _ChatPageState extends State<ChatPage> {
                   reverse: true, // 新しいメッセージが下に来るように
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
+                    // ここで一つずつ取り出す。
                     final message = messages[index];
                     // senderIdが自分のGoogle UIDと同じなら「自分」と判定
                     final bool isMe = message.senderId == _myGoogleUid;
 
                     return _buildMessageBubble(
-                      context, 
-                      name: isMe ? '自分' : '家族メンバー', 
-                      message: message.message, 
-                      isMe: isMe, 
-                      screenWidth: screenWidth
+                      context,
+                      name: isMe ? '自分' : '家族メンバー',
+                      message: message.message,
+                      isMe: isMe,
+                      screenWidth: screenWidth,
                     );
-                  }
+                  },
                 );
               },
             ),
@@ -112,13 +100,20 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  Widget _buildMessageBubble(BuildContext context,
-      {required String name, required String message, required bool isMe, required double screenWidth}) {
+  Widget _buildMessageBubble(
+    BuildContext context, {
+    required String name,
+    required String message,
+    required bool isMe,
+    required double screenWidth,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         // 自分のメッセージは右寄せ、相手は左寄せ（レスポンシブ！）
-        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isMe
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!isMe)
@@ -128,9 +123,15 @@ class _ChatPageState extends State<ChatPage> {
             ),
           const SizedBox(width: 8),
           Column(
-            crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            crossAxisAlignment: isMe
+                ? CrossAxisAlignment.end
+                : CrossAxisAlignment.start,
             children: [
-              if (!isMe) Text(name, style: const TextStyle(color: Colors.white, fontSize: 12)),
+              if (!isMe)
+                Text(
+                  name,
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                ),
               const SizedBox(height: 4),
               ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: screenWidth * 0.7),
@@ -145,7 +146,10 @@ class _ChatPageState extends State<ChatPage> {
                       bottomRight: Radius.circular(isMe ? 0 : 15),
                     ),
                   ),
-                  child: Text(message, style: const TextStyle(color: Colors.black)),
+                  child: Text(
+                    message,
+                    style: const TextStyle(color: Colors.black),
+                  ),
                 ),
               ),
               if (isMe) ...[
@@ -169,9 +173,18 @@ class _ChatPageState extends State<ChatPage> {
       child: SafeArea(
         child: Row(
           children: [
-            IconButton(onPressed: () {}, icon: const Icon(Icons.add, color: Colors.grey)),
-            IconButton(onPressed: () {}, icon: const Icon(Icons.camera_alt_outlined, color: Colors.grey)),
-            IconButton(onPressed: () {}, icon: const Icon(Icons.photo_outlined, color: Colors.grey)),
+            IconButton(
+              onPressed: () {},
+              icon: const Icon(Icons.add, color: Colors.grey),
+            ),
+            IconButton(
+              onPressed: () {},
+              icon: const Icon(Icons.camera_alt_outlined, color: Colors.grey),
+            ),
+            IconButton(
+              onPressed: () {},
+              icon: const Icon(Icons.photo_outlined, color: Colors.grey),
+            ),
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
@@ -180,7 +193,7 @@ class _ChatPageState extends State<ChatPage> {
                 ),
                 child: TextField(
                   controller: _textController, // 独自に宣言した変数をセット
-                  onSubmitted: _handleSubmitted, // キーボードの「改行/完了」で送信
+                  onSubmitted: _sendMessage, // キーボードの「改行/完了」で送信
                   decoration: const InputDecoration(
                     hintText: 'Aa',
                     border: InputBorder.none,
@@ -190,12 +203,24 @@ class _ChatPageState extends State<ChatPage> {
               ),
             ),
             IconButton(
-              onPressed: () => _handleSubmitted(_textController.text),
+              onPressed: () => _sendMessage(_textController.text),
               icon: const Icon(Icons.send, color: Colors.blue), // 送信アイコンに変更
             ),
           ],
         ),
       ),
     );
+  }
+
+  // 送信ボタンが押された時に呼ばれる関数
+  void _sendMessage(String text) {
+    if (text.trim().isEmpty) return;
+
+    final String content = _textController.text;
+    _textController.clear();
+
+    // ChatServiceにメッセージ送信を依頼
+    // UIは「送信した」という事実だけを投げればOK（疎結合！）
+    _chatService.sendMessage(_currentGroupId, _myGoogleUid, content);
   }
 }

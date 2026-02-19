@@ -44,6 +44,7 @@ class ProfileRemoteDatasourceImpl implements ProfileRemoteDataSource {
     // }
     // サーバーから返ってきた更新時刻（確定値）を使う想定。
     final serverUpdatedAt = DateTime.now().toUtc();
+    // サーバータイムでUserを作り直す。これにより、更新日時がローカルではなくサーバーの正しい時間で管理できるようになる。
     return user.copyWith(updatedAt: serverUpdatedAt);
   }
 

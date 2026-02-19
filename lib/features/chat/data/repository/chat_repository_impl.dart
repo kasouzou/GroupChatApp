@@ -4,35 +4,7 @@ import 'package:group_chat_app/features/chat/domain/entities/chat_message_model.
 import 'package:uuid/uuid.dart';
 
 
-class ChatService implements ChatRepository {
-  // 仮想のDB（メモリ上に保存）
-  // 初期値としてダミーデータを用意しておくことにしたよ。
-  final List<ChatMessageModel> _messages = [
-    ChatMessageModel(
-      id: const Uuid().v4(),
-      groupId: 'family_group_001',
-      senderId: 'user_father', // お父さん
-      role: 'leader',
-      message: '今日の夕飯は何かな？',
-      createdAt: DateTime.now().subtract(const Duration(minutes: 10)),
-    ),
-    ChatMessageModel(
-      id: const Uuid().v4(),
-      groupId: 'family_group_001',
-      senderId: 'user_mother', // お母さん
-      role: 'member',
-      message: '今日はハンバーグよ！',
-      createdAt: DateTime.now().subtract(const Duration(minutes: 5)),
-    ),
-    ChatMessageModel(
-      id: const Uuid().v4(),
-      groupId: 'family_group_001',
-      senderId: 'user_sister', // 妹
-      role: 'member',
-      message: 'わーい！楽しみ！',
-      createdAt: DateTime.now().subtract(const Duration(minutes: 2)),
-    ),
-  ];
+class ChatRepositoryImpl implements ChatRepository {
   
   // データの変更を通知するためのコントローラー（Streamの出口）
   final _controller = StreamController<List<ChatMessageModel>>.broadcast();
@@ -40,8 +12,12 @@ class ChatService implements ChatRepository {
   // メモリ開放を忘れない！
   @override
   void dispose() {
-    print('ChatServiceを片付けます！');
     _controller.close();
+  }
+
+  @override
+  Future<void> saveMessage(ChatMessageModel message) {
+    return 
   }
 
   @override
