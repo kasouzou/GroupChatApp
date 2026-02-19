@@ -6,7 +6,7 @@ part of 'sqlite_manager.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$sqliteManagerHash() => r'21cfae10286091a622458c1300f6607a354df996';
+String _$sqliteManagerHash() => r'bef05223017f19d0d2db7c2a6b192860719faa64';
 
 /// See also [SqliteManager].
 @ProviderFor(SqliteManager)

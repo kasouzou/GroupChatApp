@@ -1,26 +1,26 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'profile_notifier.dart';
+part of 'chat_notifier.dart';
 
 // **************************************************************************
 // RiverpodGenerator
 // **************************************************************************
 
-String _$profileNotifierHash() => r'f9fa428cbb46b7e0bad597098ce44420bb6d6fd3';
+String _$chatNotifierHash() => r'ac55e9efd73251893a293490dedb48edfb93881c';
 
-/// See also [ProfileNotifier].
-@ProviderFor(ProfileNotifier)
-final profileNotifierProvider =
-    NotifierProvider<ProfileNotifier, ProfileUiModel>.internal(
-      ProfileNotifier.new,
-      name: r'profileNotifierProvider',
+/// See also [ChatNotifier].
+@ProviderFor(ChatNotifier)
+final chatNotifierProvider =
+    NotifierProvider<ChatNotifier, ChatUiState>.internal(
+      ChatNotifier.new,
+      name: r'chatNotifierProvider',
       debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
           ? null
-          : _$profileNotifierHash,
+          : _$chatNotifierHash,
       dependencies: null,
       allTransitiveDependencies: null,
     );
 
-typedef _$ProfileNotifier = Notifier<ProfileUiModel>;
+typedef _$ChatNotifier = Notifier<ChatUiState>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

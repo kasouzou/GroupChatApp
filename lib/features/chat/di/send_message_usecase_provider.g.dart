@@ -1,30 +1,29 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'profile_local_datasource_provider.dart';
+part of 'send_message_usecase_provider.dart';
 
 // **************************************************************************
 // RiverpodGenerator
 // **************************************************************************
 
-String _$profileLocalDataSourceHash() =>
-    r'bf42738bc5e821eabfaf4d4756b674b052aa9b4f';
+String _$sendMessageUseCaseHash() =>
+    r'3a9ded56fa5ac920d931b028e0431e007cfd5a37';
 
-/// See also [profileLocalDataSource].
-@ProviderFor(profileLocalDataSource)
-final profileLocalDataSourceProvider =
-    AutoDisposeProvider<ProfileLocalDataSource>.internal(
-      profileLocalDataSource,
-      name: r'profileLocalDataSourceProvider',
+/// See also [sendMessageUseCase].
+@ProviderFor(sendMessageUseCase)
+final sendMessageUseCaseProvider =
+    AutoDisposeProvider<SendMessageUseCase>.internal(
+      sendMessageUseCase,
+      name: r'sendMessageUseCaseProvider',
       debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
           ? null
-          : _$profileLocalDataSourceHash,
+          : _$sendMessageUseCaseHash,
       dependencies: null,
       allTransitiveDependencies: null,
     );
 
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
-typedef ProfileLocalDataSourceRef =
-    AutoDisposeProviderRef<ProfileLocalDataSource>;
+typedef SendMessageUseCaseRef = AutoDisposeProviderRef<SendMessageUseCase>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

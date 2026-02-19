@@ -1,53 +1,117 @@
 import 'dart:async';
+
+import 'package:group_chat_app/features/chat/data/datasource/local/chat_local_datasource_impl.dart';
 import 'package:group_chat_app/features/chat/domain/chat_repository.dart';
 import 'package:group_chat_app/features/chat/domain/entities/chat_message_model.dart';
+import 'package:group_chat_app/features/chat/domain/entities/message_content.dart';
+import 'package:group_chat_app/features/chat/domain/entities/message_status.dart';
+import 'package:group_chat_app/features/chat/domain/entities/send_message_response.dart';
 import 'package:uuid/uuid.dart';
 
-
 class ChatRepositoryImpl implements ChatRepository {
-  
-  // データの変更を通知するためのコントローラー（Streamの出口）
-  final _controller = StreamController<List<ChatMessageModel>>.broadcast();
+  // ローカル保存の実体。未接続でも動かせるよう nullable にしている。
+  final ChatLocalDataSourceImpl? local;
+  // 疑似サーバーIDを作るための UUID 生成器。
+  final _uuid = const Uuid();
+  // グループごとのメッセージ一覧をメモリ保持する簡易ストア。
+  final _messagesByGroup = <String, List<ChatMessageModel>>{};
+  // グループごとの購読ストリーム。
+  final _watchControllers = <String, StreamController<List<ChatMessageModel>>>{};
+  // local の更新通知を受け取る購読。
+  StreamSubscription<ChatMessageModel>? _localSubscription;
 
-  // メモリ開放を忘れない！
-  @override
-  void dispose() {
-    _controller.close();
+  ChatRepositoryImpl({this.local}) {
+    // local 側で保存されたメッセージを repository 側のメモリにも反映する。
+    _localSubscription = local?.watchMessages().listen(_upsertAndBroadcast);
   }
 
-  
   @override
-  Future<void> saveMessage(ChatMessageModel message) {
-    
+  Future<void> saveMessage(ChatMessageModel message) async {
+    // 先にメモリへ反映して UI を即更新（楽観的更新）。
+    _upsertAndBroadcast(message);
+    if (local != null) {
+      // local があれば永続化も実行。
+      await local!.saveMessage(message);
+    }
   }
 
   @override
   Stream<List<ChatMessageModel>> watchMessages(String groupId) {
-    // ★ 監視が始まった瞬間に、現在のリスト（初期値入り）を川に流す
-    // Timer.runを使うことで、リスナーが準備できてからデータを流せるよ
-    Timer.run(() {
-      _controller.add(List.from(_messages.reversed));
-    });
-    return _controller.stream;
+    // グループ単位でストリームを使い分ける。
+    final controller = _watchControllers.putIfAbsent(
+      groupId,
+      () => StreamController<List<ChatMessageModel>>.broadcast(),
+    );
+
+    // 初回監視時は模擬履歴を投入（要件: 足りないデータは mock 可）。
+    _messagesByGroup.putIfAbsent(groupId, () => _mockInitialMessages(groupId));
+    // リスナー接続完了後に現在値を流す。
+    Timer.run(() => controller.add(List.unmodifiable(_messagesByGroup[groupId]!)));
+    return controller.stream;
   }
 
   @override
-  Future<void> sendMessage(String groupId, String senderId, String text) async {
-    final uuid = Uuid().v4();
-    // 新しいメッセージ（レコード）を作成
-    final newMessage = ChatMessageModel(
-      id: uuid, // ここでUUIDを生成！
-      groupId: groupId,
-      senderId: senderId,
-      role: 'member',
-      message: text,
-      createdAt: DateTime.now(),
+  Future<SendMessageResponse> sendMessage(ChatMessageModel message) async {
+    // ここは疑似リモート送信。実通信の代わりに遅延だけ入れる。
+    await Future.delayed(const Duration(milliseconds: 150));
+    return SendMessageResponse(
+      // サーバー採番IDとサーバー時刻を返す想定。
+      serverId: _uuid.v4(),
+      serverSentAtMs: DateTime.now().millisecondsSinceEpoch,
     );
+  }
 
-    _messages.add(newMessage);
-    
-    // DBが更新されたので、接続中の全てのUIに「新しいリストだよ！」と通知する
-    // これが「複数の携帯で同期」されるロジックの肝になるよ
-    _controller.add(List.from(_messages.reversed)); 
+  Future<void> dispose() async {
+    // 購読とストリームを閉じてリソースリークを防ぐ。
+    await _localSubscription?.cancel();
+    for (final controller in _watchControllers.values) {
+      await controller.close();
+    }
+  }
+
+  void _upsertAndBroadcast(ChatMessageModel message) {
+    // localId をキーに「更新 or 追加」を行う。
+    final messages = _messagesByGroup.putIfAbsent(message.groupId, () => <ChatMessageModel>[]);
+    final index = messages.indexWhere((m) => m.localId == message.localId);
+    if (index >= 0) {
+      messages[index] = message;
+    } else {
+      messages.add(message);
+    }
+
+    // 表示順を安定させるため作成時刻でソート。
+    messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    final controller = _watchControllers[message.groupId];
+    if (controller != null && !controller.isClosed) {
+      // 外部から不意に変更されないよう unmodifiable で通知。
+      controller.add(List.unmodifiable(messages));
+    }
+  }
+
+  List<ChatMessageModel> _mockInitialMessages(String groupId) {
+    // 監視開始時の初期表示用ダミーメッセージ。
+    final now = DateTime.now().millisecondsSinceEpoch;
+    return [
+      ChatMessageModel(
+        localId: 'mock-$groupId-1',
+        groupId: groupId,
+        senderId: 'system',
+        serverId: 'server-mock-$groupId-1',
+        role: 'member',
+        status: MessageStatus.sent,
+        content: TextContent('Welcome to the chat'),
+        createdAt: now - 60000,
+      ),
+      ChatMessageModel(
+        localId: 'mock-$groupId-2',
+        groupId: groupId,
+        senderId: 'system',
+        serverId: 'server-mock-$groupId-2',
+        role: 'member',
+        status: MessageStatus.sent,
+        content: TextContent('This is mock history data'),
+        createdAt: now - 30000,
+      ),
+    ];
   }
 }
