@@ -71,6 +71,10 @@ class ChatRepositoryImpl implements ChatRepository {
 
   void _upsertAndBroadcast(ChatMessageModel message) {
     // localId をキーに「更新 or 追加」を行う。
+    // 意味: 「もし message.groupId という部屋が Map の中になかったら、
+    // 右側の関数 () => <ChatMessageModel>[] を実行して新しい空のリストをその部屋に作れ。
+    // あったら、そのままその部屋のリストを返せ。何もしない。」
+    // コードの全行解説は→https://www.notion.so/2026-1-28-2f68b8225642805a9a82c15189ab7826?source=copy_link#3038b822564280838bb9d138e5172b66
     final messages = _messagesByGroup.putIfAbsent(message.groupId, () => <ChatMessageModel>[]);
     final index = messages.indexWhere((m) => m.localId == message.localId);
     if (index >= 0) {
