@@ -1,151 +1,139 @@
-// 自分の所属しているチャットをリストで表示するページです。
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:group_chat_app/features/chat/di/fetch_my_chats_usecase_provider.dart';
+import 'package:group_chat_app/features/chat/domain/entities/chat_group_summary.dart';
 import 'package:group_chat_app/features/chat/presentation/pages/chat_page.dart';
 
-// 状態を持つために StatefulWidget に変更！
-class MyChatsPage extends StatefulWidget {
+/// 自分が参加しているチャット一覧画面。
+/// groupId/groupName を表示し、選択したグループへ遷移する。
+class MyChatsPage extends ConsumerStatefulWidget {
   const MyChatsPage({super.key});
 
   @override
-  State<MyChatsPage> createState() => _MyChatsPageState();
+  ConsumerState<MyChatsPage> createState() => _MyChatsPageState();
 }
 
-class _MyChatsPageState extends State<MyChatsPage> {
-  final int _myChatCount = 25;
-
+class _MyChatsPageState extends ConsumerState<MyChatsPage> {
   final TextEditingController _searchController = TextEditingController();
-
-  // ★ 1. 現在どのソートが選ばれているかを管理する変数（user-defined）
-  // 初期値は「未読順」にするために 0 をセット
   int _selectedSortIndex = 0;
 
   @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // UseCase から一覧ストリームを購読し、UIは描画責務だけを持つ。
+    final useCase = ref.watch(fetchMyChatsUseCaseProvider);
+
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         image: DecorationImage(
-          // AssetBitmap や NetworkImage も選べる
           image: AssetImage('assets/image/back2.png'),
-          // fit: 組み込み。画像をどう画面に収めるか。
-          // BoxFit.cover なら、画面いっぱいに（比率を保って）敷き詰めてくれる。
           fit: BoxFit.cover,
-          // 画像が明るすぎて文字が見にくい時は、少し暗くしたり色を重ねたりもできる
-          colorFilter: ColorFilter.mode(
-            const Color.fromARGB(0, 0, 0, 0).withOpacity(0.2), // 20%くらい黒を乗せる
-            BlendMode.darken,
-          ),
         ),
       ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        // 【重要】Saf渋谷eArea の bottom: false は「島」の下の余白を消すため
-        body: ShaderMask(
-          shaderCallback: (Rect bounds) {
-            // LinearGradient: 組み込み。上下方向の透明度グラデーションを作る。
-            return LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.white.withOpacity(0), // 上端：消える（ノッチ付近）
-                Colors.white, // 少し下：見える
-                Colors.white, // 下の方：見える
-                Colors.white.withOpacity(0), // 下端：消える（島ナビバー付近）
-              ],
-              // stops: 独自の値。0.1(10%)くらいまでボカすと自然だよ。
-              stops: const [0.0, 0.1, 0.9, 1.0],
-            ).createShader(bounds);
-          },
-          child: SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: CustomScrollView(
-                // CustomScrollView: 組み込み。複数のスクロールパーツを一つにまとめる
-                slivers: [
-                  // 1. 上半分のパーツ（SearchBarやチップス）を「スクロールするリストの一部」にする
-                  SliverToBoxAdapter(
-                    // SliverToBoxAdapter: 組み込み。普通のWidgetをSliver（スクロール用）に変換する
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 10),
-                        SearchBar(
-                          controller: _searchController,
-                          hintText: '自分のチャット検索',
-                          leading: const Icon(Icons.search),
-                        ),
+        body: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: StreamBuilder<List<ChatGroupSummary>>(
+              stream: useCase.watchMyChats(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-                        const SizedBox(height: 16), // 検索バーとの間隔
-                        // ★ ここに並び替えトグルを配置！
-                        // ★ 2. タップで動くようにしたトグルコンテナ
-                        Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(25),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.2),
+                final chats = _applySearchAndSort(snapshot.data ?? const []);
+
+                return CustomScrollView(
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 10),
+                          SearchBar(
+                            controller: _searchController,
+                            hintText: 'グループ名 / GroupId で検索',
+                            leading: const Icon(Icons.search),
+                            onChanged: (_) => setState(() {}),
+                          ),
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(25),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.2),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                _buildSortTab(0, '未読順'),
+                                _buildSortTab(1, '最新順'),
+                                _buildSortTab(2, '人気順'),
+                              ],
                             ),
                           ),
-                          child: Row(
-                            children: [
-                              // index 0: 未読順
-                              _buildSortTab(0, "未読順"),
-                              // index 1: 最新順
-                              _buildSortTab(1, "最新順"),
-                              // index 2: 人気順
-                              _buildSortTab(2, "人気順"),
-                            ],
+                          const SizedBox(height: 20),
+                        ],
+                      ),
+                    ),
+                    if (chats.isEmpty)
+                      const SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.all(24.0),
+                          child: Center(
+                            child: Text(
+                              '表示できるチャットがありません',
+                              style: TextStyle(color: Colors.white),
+                            ),
                           ),
                         ),
-
-                        const SizedBox(height: 20),
-                      ],
-                    ),
-                  ),
-
-                  // 2. メインのリスト部分
-                  // ListView.builder の代わりに SliverList を使うのがマクロ視点の正解！
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        return MyChatCard(
-                          myChatTitle: 'チャット$index',
-                          parentCommitTitle: 'parent commit',
-                          parentCommitId: 'abc123',
-                          elapsed: '1時間前',
-                          onMyChatCardTap: () async {
-                            print('チャット$index がタップされました');
-                            // rootNavigator: true でボトムバーを隠す世界へ
-                            final result =
-                                await Navigator.of(
-                                  context,
-                                  rootNavigator: true,
-                                ).push(
-                                  MaterialPageRoute(
-                                    builder: (context) => const ChatPage(),
-                                    settings: const RouteSettings(
-                                      name: 'ChatPage',
-                                    ),
+                      )
+                    else
+                      SliverList(
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          final chat = chats[index];
+                          return MyChatCard(
+                            groupName: chat.groupName,
+                            groupId: chat.groupId,
+                            lastMessagePreview: chat.lastMessagePreview,
+                            elapsed: _formatElapsed(chat.lastMessageAt),
+                            memberCount: chat.memberCount,
+                            unreadCount: chat.unreadCount,
+                            onMyChatCardTap: () async {
+                              await Navigator.of(
+                                context,
+                                rootNavigator: true,
+                              ).push(
+                                MaterialPageRoute(
+                                  builder: (context) => ChatPage(
+                                    groupId: chat.groupId,
+                                    groupName: chat.groupName,
                                   ),
-                                );
-                          },
-                          onMyChatRenameTap: () {},
-                          onMyChatEditDescriptionTap: () {},
-                          onDetailTap: () {},
-                          onMyChatDeleteTap: () {},
-                        );
-                      },
-                      childCount: _myChatCount, // 表示する数（独自変数）
-                    ),
-                  ),
-
-                  // 3. 一番下に「島」の分だけの余白を作る（スクロールしきれるように）
-                  const SliverToBoxAdapter(child: SizedBox(height: 100)),
-                ],
-              ),
+                                  settings: const RouteSettings(name: 'ChatPage'),
+                                ),
+                              );
+                            },
+                            onMyChatRenameTap: () {},
+                            onMyChatEditDescriptionTap: () {},
+                            onDetailTap: () {},
+                            onMyChatDeleteTap: () {},
+                          );
+                        }, childCount: chats.length),
+                      ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 100)),
+                  ],
+                );
+              },
             ),
           ),
         ),
@@ -153,23 +141,54 @@ class _MyChatsPageState extends State<MyChatsPage> {
     );
   }
 
-  // ★ 4. タップ検知と再描画を行うヘルパー関数
+  List<ChatGroupSummary> _applySearchAndSort(List<ChatGroupSummary> chats) {
+    // フィルタ/ソートは画面責務として集約し、カード描画を単純化する。
+    final keyword = _searchController.text.trim().toLowerCase();
+
+    final filtered = chats.where((chat) {
+      if (keyword.isEmpty) return true;
+      return chat.groupName.toLowerCase().contains(keyword) ||
+          chat.groupId.toLowerCase().contains(keyword) ||
+          chat.lastMessagePreview.toLowerCase().contains(keyword);
+    }).toList();
+
+    switch (_selectedSortIndex) {
+      case 0:
+        filtered.sort((a, b) {
+          final unreadCompare = b.unreadCount.compareTo(a.unreadCount);
+          if (unreadCompare != 0) return unreadCompare;
+          return b.lastMessageAt.compareTo(a.lastMessageAt);
+        });
+        break;
+      case 1:
+        filtered.sort((a, b) => b.lastMessageAt.compareTo(a.lastMessageAt));
+        break;
+      case 2:
+        filtered.sort((a, b) {
+          final memberCompare = b.memberCount.compareTo(a.memberCount);
+          if (memberCompare != 0) return memberCompare;
+          return b.lastMessageAt.compareTo(a.lastMessageAt);
+        });
+        break;
+      default:
+        filtered.sort((a, b) => b.lastMessageAt.compareTo(a.lastMessageAt));
+        break;
+    }
+
+    return filtered;
+  }
+
   Widget _buildSortTab(int index, String label) {
-    // 今このボタンが選ばれているかどうか
-    final bool isActive = _selectedSortIndex == index;
+    final isActive = _selectedSortIndex == index;
 
     return Expanded(
       child: GestureDetector(
-        // タップされたら index を更新して setState！
         onTap: () {
           setState(() {
             _selectedSortIndex = index;
           });
-          // ここで「サーバーにデータを再リクエスト」する関数を呼ぶのがマクロ視点の正解
-          print("$label が選択されました");
         },
         child: AnimatedContainer(
-          // AnimatedContainer にすると、色の変化が 0.2秒かけて「ヌルッ」と動く
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
@@ -193,36 +212,44 @@ class _MyChatsPageState extends State<MyChatsPage> {
       ),
     );
   }
+
+  String _formatElapsed(int unixMs) {
+    // 一覧の視認性を優先した相対時刻表示。
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final diffSec = ((now - unixMs) / 1000).floor();
+
+    if (diffSec < 60) return '$diffSec秒前';
+    final diffMin = (diffSec / 60).floor();
+    if (diffMin < 60) return '$diffMin分前';
+    final diffHour = (diffMin / 60).floor();
+    if (diffHour < 24) return '$diffHour時間前';
+    final diffDay = (diffHour / 24).floor();
+    return '$diffDay日前';
+  }
 }
 
-/// 1つのチャットグループを表示するカードWidget
 class MyChatCard extends StatelessWidget {
-  // チャットグループ名
-  final dynamic myChatTitle;
-
-  // 親コミットID
-  final String parentCommitId;
-
-  // 親コミットタイトル
-  final String parentCommitTitle;
-
-  // 経過時間表示
+  final String groupName;
+  final String groupId;
+  final String lastMessagePreview;
   final String elapsed;
+  final int memberCount;
+  final int unreadCount;
 
-  // 各種操作時のコールバック
   final VoidCallback? onMyChatCardTap;
   final VoidCallback? onMyChatRenameTap;
   final VoidCallback? onMyChatEditDescriptionTap;
   final VoidCallback? onDetailTap;
   final VoidCallback? onMyChatDeleteTap;
 
-  // コンストラクタ
   const MyChatCard({
     super.key,
-    required this.myChatTitle,
-    required this.parentCommitId,
-    required this.parentCommitTitle,
+    required this.groupName,
+    required this.groupId,
+    required this.lastMessagePreview,
     required this.elapsed,
+    required this.memberCount,
+    required this.unreadCount,
     required this.onMyChatCardTap,
     required this.onMyChatRenameTap,
     required this.onMyChatEditDescriptionTap,
@@ -230,102 +257,68 @@ class MyChatCard extends StatelessWidget {
     required this.onMyChatDeleteTap,
   });
 
-  /// カードUIの構築
   @override
   Widget build(BuildContext context) {
     return Card(
       color: const Color.fromARGB(151, 0, 0, 0),
       margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(46)),
-
-      // タップ可能にするためInkWellで包む
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       child: InkWell(
         onTap: onMyChatCardTap,
-        borderRadius: BorderRadius.circular(12),
-
-        // 内側の余白
+        borderRadius: BorderRadius.circular(24),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-
-          // 縦方向に並べる
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 上段（アイコン＋テキスト）
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // チャットグループを表すアイコン
-                  FaIcon(
+                  const FaIcon(
                     FontAwesomeIcons.commentDots,
-                    size: 30,
-                    color: const Color.fromARGB(255, 255, 255, 255),
+                    size: 24,
+                    color: Colors.white,
                   ),
-                  const SizedBox(width: 16),
-
-                  // テキスト部分を広げる
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // チャットグループ名
                         Text(
-                          myChatTitle,
+                          groupName,
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 32,
+                            fontSize: 20,
                             color: Colors.white,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
-
                         const SizedBox(height: 4),
-
-                        // 親コミットID
                         Text(
-                          '派生元コミットID:$parentCommitId',
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 12,
-                          ),
+                          'GroupId: $groupId',
+                          style: const TextStyle(color: Colors.grey, fontSize: 12),
+                          overflow: TextOverflow.ellipsis,
                         ),
-
                         const SizedBox(height: 4),
-
-                        // 親コミットタイトル
                         Text(
-                          '派生元コミットタイトル: $parentCommitTitle',
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 12,
-                          ),
+                          lastMessagePreview,
+                          style: const TextStyle(color: Colors.white70, fontSize: 12),
+                          overflow: TextOverflow.ellipsis,
                         ),
-
                         const SizedBox(height: 4),
-
-                        // 更新時間
                         Text(
-                          '更新日時: $elapsed',
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 12,
-                          ),
+                          '更新: $elapsed / 参加者: $memberCount / 未読: $unreadCount',
+                          style: const TextStyle(color: Colors.grey, fontSize: 12),
                         ),
                       ],
                     ),
                   ),
-
-                  const SizedBox(width: 8),
                 ],
               ),
-
-              // 右下のメニュー部分
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  // 三点リーダーのポップアップメニュー
                   PopupMenuButton(
                     color: const Color.fromARGB(162, 255, 255, 255),
                     icon: const Icon(Icons.more_vert, color: Colors.white),
@@ -333,33 +326,27 @@ class MyChatCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(16.0),
                     ),
                     elevation: 8,
-
-                    // 選択されたメニューに応じた処理
                     onSelected: (String result) {
                       switch (result) {
                         case 'rename':
-                          onMyChatRenameTap!();
+                          onMyChatRenameTap?.call();
                           break;
                         case 'edit_description':
-                          onMyChatEditDescriptionTap!();
+                          onMyChatEditDescriptionTap?.call();
                           break;
                         case 'detail':
-                          onDetailTap!();
+                          onDetailTap?.call();
                           break;
                         case 'delete':
-                          onMyChatDeleteTap!();
+                          onMyChatDeleteTap?.call();
                           break;
                       }
                     },
-
-                    // メニュー項目の定義
-                    itemBuilder: (BuildContext content) =>
+                    itemBuilder: (BuildContext context) =>
                         <PopupMenuEntry<String>>[
                           const PopupMenuItem<String>(
                             value: 'rename',
                             child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(Icons.drive_file_rename_outline),
                                 Text(
@@ -369,7 +356,6 @@ class MyChatCard extends StatelessWidget {
                               ],
                             ),
                           ),
-
                           const PopupMenuItem<String>(
                             value: 'edit_description',
                             child: Row(
@@ -382,22 +368,19 @@ class MyChatCard extends StatelessWidget {
                               ],
                             ),
                           ),
-
                           const PopupMenuItem<String>(
                             value: 'detail',
                             child: Row(
                               children: [
                                 Icon(Icons.info_outline_rounded),
                                 Text(
-                                  'チャットグループの詳細',
+                                  'チャット詳細',
                                   style: TextStyle(fontWeight: FontWeight.bold),
                                 ),
                               ],
                             ),
                           ),
-
                           const PopupMenuDivider(),
-
                           const PopupMenuItem<String>(
                             value: 'delete',
                             child: Row(

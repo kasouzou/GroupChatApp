@@ -6,8 +6,19 @@ import 'package:group_chat_app/features/chat/domain/entities/message_content.dar
 import 'package:group_chat_app/features/chat/presentation/providers/chat_notifier.dart';
 import 'package:uuid/uuid.dart';
 
+/// 単一グループのチャット画面。
+/// 呼び出し元から受け取った groupId/groupName を表示・送信に利用する。
 class ChatPage extends ConsumerStatefulWidget {
-  const ChatPage({super.key});
+  final String groupId;
+  final String groupName;
+  final String? currentUserId;
+
+  const ChatPage({
+    super.key,
+    required this.groupId,
+    required this.groupName,
+    this.currentUserId,
+  });
 
   @override
   ConsumerState<ChatPage> createState() => _ChatPageState();
@@ -17,13 +28,17 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   final TextEditingController _textController = TextEditingController();
 
   // 仮の自分の情報（実際はGoogleログインから取得する）
-  final String _myGoogleUid = const Uuid().v4();
-  final String _currentGroupId = 'family_group_001';
+  late final String _myGoogleUid;
+  late final String _currentGroupId;
 
   @override
   void initState() {
     super.initState();
+    // 画面生成時に確定したコンテキストを保持する。
+    _myGoogleUid = widget.currentUserId ?? const Uuid().v4();
+    _currentGroupId = widget.groupId;
 
+    // 送信処理が参照する状態をNotifierへ反映。
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(chatNotifierProvider.notifier).setChatContext(
             groupId: _currentGroupId,
@@ -54,7 +69,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
           onPressed: () => Navigator.pop(context, 'done'),
         ),
-        title: const Text('３０２号室 (5)', style: TextStyle(color: Colors.white)),
+        title: Text(
+          widget.groupName,
+          style: const TextStyle(color: Colors.white),
+        ),
       ),
       body: Column(
         children: [
