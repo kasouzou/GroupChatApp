@@ -15,7 +15,7 @@ class ChatRepositoryImpl implements ChatRepository {
   final _uuid = const Uuid();
   // グループごとのメッセージ一覧をメモリ保持する簡易ストア。
   final _messagesByGroup = <String, List<ChatMessageModel>>{};
-  // グループごとの購読ストリーム。
+  // グループごとの購読ストリーム。（GroupIdごとにストリーム本体があり、そのストリーム本体にはリスト形式のChatMessageModel型のデータが流れている）
   final _watchControllers = <String, StreamController<List<ChatMessageModel>>>{};
   // local の更新通知を受け取る購読。
   StreamSubscription<ChatMessageModel>? _localSubscription;

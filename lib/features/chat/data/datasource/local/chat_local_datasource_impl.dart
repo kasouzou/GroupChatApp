@@ -17,6 +17,7 @@ class ChatLocalDataSourceImpl {
     await _dao.insertMessage(_toRow(message));
     _controller.add(message);
   }
+  // DB 保存時、_controller.add(message)18行目 が watchMessages() stream 22行目に流す
 
   Stream<ChatMessageModel> watchMessages() {
     return _controller.stream;
