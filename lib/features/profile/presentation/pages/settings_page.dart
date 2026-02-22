@@ -1,22 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:group_chat_app/features/auth/di/auth_session_provider.dart';
+import 'package:group_chat_app/features/auth/di/google_login_usecase_provider.dart';
+import 'package:group_chat_app/features/auth/presentation/pages/login_page.dart';
 
-class SettingsPage extends StatefulWidget {
+class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
 
   @override
-  State<SettingsPage> createState() => _SettingsPageState();
+  ConsumerState<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends State<SettingsPage> {
-  // ★ 独自に宣言した状態変数（今は使ってないけど、将来のスイッチ等に！）
-  bool _isSettingsPressed = false;
+class _SettingsPageState extends ConsumerState<SettingsPage> {
+  bool _isSigningOut = false;
 
   @override
   Widget build(BuildContext context) {
-    // 組み込みのMediaQueryを使って画面の向きを判定（レスポンシブ対応用）
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
-
     return Container(
       decoration: BoxDecoration(
         image: DecorationImage(
@@ -126,6 +125,19 @@ class _SettingsPageState extends State<SettingsPage> {
                           thickness: 0.5,
                           color: Colors.white24,
                         ),
+
+                        _buildSettingsTile(
+                          title: _isSigningOut ? 'ログアウト中...' : 'ログアウト',
+                          onTap: _isSigningOut ? null : _onSignOutTap,
+                          leadingIcon: Icons.logout,
+                          showChevron: false,
+                        ),
+
+                        const Divider(
+                          height: 1,
+                          thickness: 0.5,
+                          color: Colors.white24,
+                        ),
                       ],
                     ),
                   ),
@@ -144,7 +156,9 @@ class _SettingsPageState extends State<SettingsPage> {
   // 似たようなUIを何個も作るときは、こうして「部品化」するのがエンジニアの鋭い観察眼！
   Widget _buildSettingsTile({
     required String title,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
+    IconData? leadingIcon,
+    bool showChevron = true,
   }) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4),
@@ -167,6 +181,10 @@ class _SettingsPageState extends State<SettingsPage> {
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
             child: Row(
               children: [
+                if (leadingIcon != null) ...[
+                  Icon(leadingIcon, color: Colors.white, size: 22),
+                  const SizedBox(width: 10),
+                ],
                 Expanded(
                   child: Text(
                     title,
@@ -178,12 +196,62 @@ class _SettingsPageState extends State<SettingsPage> {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const Icon(Icons.chevron_right, color: Colors.white, size: 28),
+                if (showChevron)
+                  const Icon(
+                    Icons.chevron_right,
+                    color: Colors.white,
+                    size: 28,
+                  ),
               ],
             ),
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _onSignOutTap() async {
+    final shouldSignOut = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('ログアウト'),
+        content: const Text('ログアウトしますか？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('キャンセル'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('ログアウト'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldSignOut != true) return;
+
+    setState(() => _isSigningOut = true);
+    try {
+      final useCase = ref.read(googleLoginUseCaseProvider);
+      await useCase.signOut();
+      ref.read(authSessionProvider.notifier).state = null;
+
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => const LoginPage(),
+          settings: const RouteSettings(name: 'LoginPage'),
+        ),
+        (_) => false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('ログアウトに失敗しました: $e')));
+    } finally {
+      if (mounted) setState(() => _isSigningOut = false);
+    }
   }
 }
