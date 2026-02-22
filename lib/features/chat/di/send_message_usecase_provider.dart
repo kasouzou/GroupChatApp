@@ -7,8 +7,5 @@ part 'send_message_usecase_provider.g.dart';
 @riverpod
 SendMessageUseCase sendMessageUseCase(SendMessageUseCaseRef ref) {
   final repository = ref.watch(chatRepositoryProvider);
-  return SendMessageUseCase(
-    repository: repository,
-    sender: 'mock-user',
-  );
+  return SendMessageUseCase(repository: repository);
 }

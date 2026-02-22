@@ -35,7 +35,7 @@ class ChatUiState {
   factory ChatUiState.initial() {
     return const ChatUiState(
       groupId: 'family_group_001',
-      currentUserId: 'mock-user',
+      currentUserId: '',
       currentUserRole: 'member',
     );
   }

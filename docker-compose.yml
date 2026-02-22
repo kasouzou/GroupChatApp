@@ -1,0 +1,41 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: group-chat-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: group_chat
+      POSTGRES_USER: chat_user
+      POSTGRES_PASSWORD: chat_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chat_user -d group_chat"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  fastapi:
+    build:
+      context: ./backend/chat_api
+    container_name: group-chat-fastapi
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://chat_user:chat_password@postgres:5432/group_chat
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: group-chat-nginx
+    restart: unless-stopped
+    depends_on:
+      - fastapi
+    ports:
+      - "8080:80"
+    volumes:
+      - ./backend/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+
+volumes:
+  postgres_data:
