@@ -1,70 +1,59 @@
-// ここがVPSのエンドポイントになる。
+import 'dart:convert';
+
 import 'package:group_chat_app/core/models/user_model.dart';
+import 'package:group_chat_app/core/network/api_config.dart';
 import 'package:group_chat_app/features/profile/data/datasource/remote/profile_remote_datasource.dart';
+import 'package:http/http.dart' as http;
 
-// コメントアウト含め、将来的なXserver の REST API エンドポイントを使った実装例だよ
+/// Profileタブ専用のリモート通信実装。
 class ProfileRemoteDatasourceImpl implements ProfileRemoteDataSource {
+  final http.Client _client;
 
-  static const String baseUrl = 'https://your-xserver-domain.com/api';
-  // final http.Client httpClient;
-  // ProfileRemoteDatasourceImpl(this.httpClient);
+  ProfileRemoteDatasourceImpl([http.Client? client])
+    : _client = client ?? http.Client();
 
   @override
   Future<UserModel> fetchUser(String userId) async {
-
-    // 実際はこんな感じでHTTP通信を書く
-    // final response = await httpClient.get(
-    //   Uri.parse('$baseUrl/users/$userId'),
-    // );
-    // if (response.statusCode == 200) {
-    //   return UserModel.fromJson(jsonDecode(response.body));
-    // }
-    // throw Exception('Failed to fetch user');
-    
-    return UserModel(
-      id: userId,
-      displayName: 'RemoteUser',
-      photoUrl: 'https://example.com/photo.png',
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    );
-
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/users/$userId');
+    final response = await _client.get(uri);
+    _ensureSuccess(response, endpoint: uri.toString());
+    return UserModel.fromMap(jsonDecode(response.body) as Map<String, dynamic>);
   }
 
   @override
   Future<UserModel> updateProfile(UserModel user) async {
-    // HTTP PUTを書く
-    // final response = await httpClient.put(
-    //   Uri.parse('$baseUrl/users/${user.id}'),
-    //   headers: {'Content-Type': 'application/json'},
-    //   body: jsonEncode(user.toJson()),
-    // );
-    // if (response.statusCode != 200) {
-    //   throw Exception('Failed to update profile');
-    // }
-    // サーバーから返ってきた更新時刻（確定値）を使う想定。
-    final serverUpdatedAt = DateTime.now().toUtc();
-    // サーバータイムでUserを作り直す。これにより、更新日時がローカルではなくサーバーの正しい時間で管理できるようになる。
-    return user.copyWith(updatedAt: serverUpdatedAt);
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/users/${user.id}');
+    final response = await _client.put(
+      uri,
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'display_name': user.displayName,
+        'photo_url': user.photoUrl,
+      }),
+    );
+    _ensureSuccess(response, endpoint: uri.toString());
+    return UserModel.fromMap(jsonDecode(response.body) as Map<String, dynamic>);
   }
 
   @override
   Future<String> uploadImage(String filePath) async {
-    // final file = File(filePath);
-    // final request = http.MultipartRequest(
-    //   'POST',
-    //   Uri.parse('$baseUrl/uploads/profile-image'),
-    // );
-    // request.files.add(await http.MultipartFile.fromPath('file', filePath));
-    
-    // final response = await request.send();
-    // if (response.statusCode == 201) {
-    //   final responseBody = await response.stream.bytesToString();
-    //   return jsonDecode(responseBody)['imageUrl'];
-    // }
-    // throw Exception('Failed to upload image');
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/uploads/profile-image');
+    final response = await _client.post(
+      uri,
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode({'file_path': filePath}),
+    );
+    _ensureSuccess(response, endpoint: uri.toString());
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return (body['image_url'] as String?) ?? '';
+  }
 
-    // multipart uploadを書く
-    return 'https://example.com/new.png';
+  void _ensureSuccess(http.Response response, {required String endpoint}) {
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return;
+    }
+    throw Exception(
+      'Profile API failed: status=${response.statusCode} endpoint=$endpoint body=${response.body}',
+    );
   }
 }

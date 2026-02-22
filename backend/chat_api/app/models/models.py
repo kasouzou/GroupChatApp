@@ -11,11 +11,32 @@ class Base(DeclarativeBase):
     pass
 
 
+class AppUser(Base):
+    # 認証済みユーザーの基本プロフィール
+    __tablename__ = "app_users"
+
+    id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    display_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    photo_url: Mapped[str] = mapped_column(String(2048), nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+
 class ChatGroup(Base):
+    # グループ基本情報
     __tablename__ = "chat_groups"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+    creator_user_id: Mapped[str] = mapped_column(String(128), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -24,6 +45,7 @@ class ChatGroup(Base):
 
 
 class ChatGroupMember(Base):
+    # ユーザーとグループの所属関係
     __tablename__ = "chat_group_members"
     __table_args__ = (
         UniqueConstraint("group_id", "user_id", name="uq_chat_group_member"),
@@ -35,6 +57,7 @@ class ChatGroupMember(Base):
 
 
 class ChatMessage(Base):
+    # リモート保存されるメッセージ本体
     __tablename__ = "chat_messages_remote"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)

@@ -57,7 +57,7 @@ class ProfileDao {
       'created_at': user.createdAt.toIso8601String(),
       'updated_at': user.updatedAt.toIso8601String(),
       // syncStatus などのフィールドが UserModel にある場合はここに追加
-      'sync_status': 0, 
+      'sync_status': 0,
     };
   }
 

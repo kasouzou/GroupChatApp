@@ -21,6 +21,7 @@ router = APIRouter(prefix="/api/v1", tags=["chat"])
 
 @router.get("/users/{user_id}/groups", response_model=ListGroupsResponse)
 async def list_user_groups(user_id: str, db: AsyncSession = Depends(get_db)) -> ListGroupsResponse:
+    # 1) ユーザー所属グループIDを取得
     membership_stmt: Select[tuple[str]] = select(ChatGroupMember.group_id).where(ChatGroupMember.user_id == user_id)
     membership_result = await db.execute(membership_stmt)
     group_ids = [row[0] for row in membership_result.all()]
@@ -32,6 +33,7 @@ async def list_user_groups(user_id: str, db: AsyncSession = Depends(get_db)) -> 
     groups_result = await db.execute(groups_stmt)
     groups = groups_result.scalars().all()
 
+    # 2) グループ単位で最新メッセージとメンバー数を集約して返す
     summaries: list[GroupSummaryResponse] = []
     for group in groups:
         latest_message_stmt: Select[tuple[ChatMessage]] = (
@@ -66,6 +68,7 @@ async def list_user_groups(user_id: str, db: AsyncSession = Depends(get_db)) -> 
 
 @router.get("/groups/{group_id}/messages", response_model=ListMessagesResponse)
 async def list_group_messages(group_id: str, db: AsyncSession = Depends(get_db)) -> ListMessagesResponse:
+    # チャット画面用に時系列で返却
     stmt: Select[tuple[ChatMessage]] = (
         select(ChatMessage)
         .where(ChatMessage.group_id == group_id)
@@ -80,10 +83,12 @@ async def list_group_messages(group_id: str, db: AsyncSession = Depends(get_db))
 
 @router.post("/messages", response_model=SendMessageResponse)
 async def send_message(payload: SendMessageRequest, db: AsyncSession = Depends(get_db)) -> SendMessageResponse:
+    # 送信先グループ存在チェック
     group = await db.get(ChatGroup, payload.group_id)
     if group is None:
         raise HTTPException(status_code=404, detail="group not found")
 
+    # サーバー確定値（ID/時刻）を発行
     server_id = str(uuid4())
     server_sent_at_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
 

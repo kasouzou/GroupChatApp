@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:group_chat_app/core/network/network_awareness_widget.dart';
-import 'package:group_chat_app/features/auth/presentation/pages/splash_screen.dart'; 
+import 'package:group_chat_app/features/auth/presentation/pages/splash_screen.dart';
 import 'package:group_chat_app/shared/theme/app_theme.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {
@@ -21,7 +22,7 @@ class MyApp extends StatelessWidget {
       // オフライン／オンラインを監視してオフラインならどの画面に居ても通知を出せる。
       // 要ははアプリ全体を包んでいるイメージ
       builder: (context, child) {
-      return NetworkAwarenessWrapper(child: child!);
+        return NetworkAwarenessWrapper(child: child!);
       },
       home: const SplashScreenPage(),
       debugShowCheckedModeBanner: false,

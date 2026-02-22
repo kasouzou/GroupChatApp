@@ -41,10 +41,7 @@ class ChatDao {
   // 💡 2-2. ローカルにある全メッセージを取得
   // 一覧の初期表示（Repositoryのウォームアップ）に使う。
   Future<List<Map<String, dynamic>>> getAllMessages() async {
-    return await _db.query(
-      'chat_messages',
-      orderBy: 'created_at ASC',
-    );
+    return await _db.query('chat_messages', orderBy: 'created_at ASC');
   }
 
   // 💡 3. 同期成功後にステータスを更新
@@ -53,10 +50,10 @@ class ChatDao {
     await _db.update(
       'chat_messages',
       {
-        'id': serverId,          // サーバー側のUUID（テーブル定義の id カラム）
-        'sync_status': 1,        // 1: 送信済
+        'id': serverId, // サーバー側のUUID（テーブル定義の id カラム）
+        'sync_status': 1, // 1: 送信済
       },
-      where: 'local_id = ?',    // 自動採番された local_id をキーに更新
+      where: 'local_id = ?', // 自動採番された local_id をキーに更新
       whereArgs: [localId],
     );
   }
@@ -67,7 +64,7 @@ class ChatDao {
   Future<void> markAsFailed(int localId) async {
     await _db.update(
       'chat_messages',
-      {'sync_status': 0}, 
+      {'sync_status': 0},
       where: 'local_id = ?',
       whereArgs: [localId],
     );

@@ -8,7 +8,7 @@ import 'package:group_chat_app/features/profile/data/datasource/local/profile_lo
 class ProfileLocalDatasourceImpl implements ProfileLocalDataSource {
   late final ProfileDao _dao; // 💡 DBを直接持たず、DAOを介す
 
-  ProfileLocalDatasourceImpl(this._dao);  // 追加：DAOの注入
+  ProfileLocalDatasourceImpl(this._dao); // 追加：DAOの注入
 
   // これがセンサー本体センサー＝Stream
   final _controller = StreamController<UserModel>.broadcast();
@@ -23,7 +23,9 @@ class ProfileLocalDatasourceImpl implements ProfileLocalDataSource {
   @override
   Stream<UserModel> watchProfile(String userId) {
     // 最初に現在のデータを棚(SQLite)から取ってきて流してやる（初期表示用）
-    _dao.getUser(userId).then((user) { if (user!=null) _controller.add(user); });
+    _dao.getUser(userId).then((user) {
+      if (user != null) _controller.add(user);
+    });
     return _controller.stream;
   }
 

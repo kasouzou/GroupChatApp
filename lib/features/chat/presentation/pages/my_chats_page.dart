@@ -119,7 +119,9 @@ class _MyChatsPageState extends ConsumerState<MyChatsPage> {
                                     groupId: chat.groupId,
                                     groupName: chat.groupName,
                                   ),
-                                  settings: const RouteSettings(name: 'ChatPage'),
+                                  settings: const RouteSettings(
+                                    name: 'ChatPage',
+                                  ),
                                 ),
                               );
                             },
@@ -297,19 +299,28 @@ class MyChatCard extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           'GroupId: $groupId',
-                          style: const TextStyle(color: Colors.grey, fontSize: 12),
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
                         Text(
                           lastMessagePreview,
-                          style: const TextStyle(color: Colors.white70, fontSize: 12),
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
                         Text(
                           '更新: $elapsed / 参加者: $memberCount / 未読: $unreadCount',
-                          style: const TextStyle(color: Colors.grey, fontSize: 12),
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
                         ),
                       ],
                     ),

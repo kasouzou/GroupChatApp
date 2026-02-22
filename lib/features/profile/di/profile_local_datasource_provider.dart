@@ -1,7 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../data/datasource/local/profile_local_datasource.dart';
 import '../data/datasource/local/profile_local_datasource_impl.dart';
-import '../data/datasource/local/profile_dao.dart';  // 追加
+import '../data/datasource/local/profile_dao.dart'; // 追加
 
 part 'profile_local_datasource_provider.g.dart';
 

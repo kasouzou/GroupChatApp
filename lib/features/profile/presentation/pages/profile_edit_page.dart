@@ -2,10 +2,10 @@
 import 'package:flutter/material.dart';
 import 'package:group_chat_app/shared/widgets/show_discard_dialog.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:group_chat_app/features/auth/di/auth_session_provider.dart';
 import 'package:group_chat_app/features/profile/presentation/providers/profile_notifier.dart';
 import 'package:group_chat_app/features/profile/presentation/pages/widgets/profile_avatar_section.dart';
 import 'package:group_chat_app/features/profile/presentation/pages/widgets/profile_text_field.dart';
-
 
 // 💡 1. ConsumerStatefulWidget に変更
 class ProfileEditPage extends ConsumerStatefulWidget {
@@ -37,8 +37,12 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
       // 1) 安全策：state.user が未ロードなら loadUser する（ProfilePage 経由でロード済なら skip）
       final current = ref.read(profileNotifierProvider).user;
       if (current.id.isEmpty) {
-        // TODO: 実運用では authProvider 等から userId を取得する
-        final userId = /* e.g. ref.read(authProvider).currentUserId */ '今のユーザーID';
+        final sessionUser = ref.read(authSessionProvider);
+        const fallbackUserId = String.fromEnvironment(
+          'CHAT_USER_ID',
+          defaultValue: 'user-001',
+        );
+        final userId = sessionUser?.id ?? fallbackUserId;
         await notifier.loadUser(userId);
         if (!mounted) return;
       }
@@ -52,18 +56,20 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
     });
 
     // Provider の editingName が後で変わったときに controller を追従させる（例：外部で編集名が更新された）
-    ref.listen<String>(
-      profileNotifierProvider.select((s) => s.editingName),
-      (previous, next) {
-        // ユーザーが直接入力中にテキストを上書きすると UX が悪いので、
-        // controller.text と一致する場合は更新しない（無駄なカーソルジャンプを防ぐ）
-        if (_nameController.text != next) {
-          _nameController.text = next;
-          // カーソルを末尾に戻す（入力中のジャンプを最小化）
-          _nameController.selection = TextSelection.collapsed(offset: _nameController.text.length);
-        }
-      },
-    );
+    ref.listen<String>(profileNotifierProvider.select((s) => s.editingName), (
+      previous,
+      next,
+    ) {
+      // ユーザーが直接入力中にテキストを上書きすると UX が悪いので、
+      // controller.text と一致する場合は更新しない（無駄なカーソルジャンプを防ぐ）
+      if (_nameController.text != next) {
+        _nameController.text = next;
+        // カーソルを末尾に戻す（入力中のジャンプを最小化）
+        _nameController.selection = TextSelection.collapsed(
+          offset: _nameController.text.length,
+        );
+      }
+    });
   }
 
   @override
@@ -75,25 +81,29 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
   @override
   Widget build(BuildContext context) {
     // 💡 stateから現在の「編集中URL」を取得する
-    final editingPhotoUrl = ref.watch(profileNotifierProvider.select((s) => s.editingPhotoUrl));
+    final editingPhotoUrl = ref.watch(
+      profileNotifierProvider.select((s) => s.editingPhotoUrl),
+    );
 
     // 💡 保存中かどうかを監視（ボタンの無効化やグルグル表示に使う）
-    final isSaving = ref.watch(profileNotifierProvider.select((s) => s.isSaving));
+    final isSaving = ref.watch(
+      profileNotifierProvider.select((s) => s.isSaving),
+    );
 
     // エラー通知は副作用として listen で扱う（build 内で呼ぶのは OK）
-    ref.listen<String?>(
-      profileNotifierProvider.select((s) => s.errorMessage),
-      (previous, next) {
-        if (next != null) {
-          // ScaffoldMessenger を使って SnackBar を表示
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(next), backgroundColor: Colors.redAccent),
-            );
-          }
+    ref.listen<String?>(profileNotifierProvider.select((s) => s.errorMessage), (
+      previous,
+      next,
+    ) {
+      if (next != null) {
+        // ScaffoldMessenger を使って SnackBar を表示
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(next), backgroundColor: Colors.redAccent),
+          );
         }
-      },
-    );
+      }
+    });
 
     return Container(
       decoration: BoxDecoration(
@@ -112,7 +122,10 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.close, color: Color.fromARGB(255, 255, 255, 255)),
+            icon: const Icon(
+              Icons.close,
+              color: Color.fromARGB(255, 255, 255, 255),
+            ),
             onPressed: () async {
               final shouldDiscard = await showDiscardDialog(context);
               if (shouldDiscard != true) {
@@ -169,7 +182,9 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
                             isSaving: isSaving,
                             onTap: () {
                               // 画像選択（ローカル保存のみ。アップロードは save 時に UseCase が行う）
-                              ref.read(profileNotifierProvider.notifier).pickImageFromGallery();
+                              ref
+                                  .read(profileNotifierProvider.notifier)
+                                  .pickImageFromGallery();
                             },
                           ),
                           const SizedBox(height: 16),
@@ -184,16 +199,14 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
                             },
                           ),
                           const SizedBox(height: 20),
-                          _buildSaveButton(isSaving),// 💡 状態を渡す
+                          _buildSaveButton(isSaving), // 💡 状態を渡す
                         ],
                       ),
                     ),
                   ),
                 ),
               ),
-              const SliverToBoxAdapter(
-                child: SizedBox(height: 120),
-              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 120)),
             ],
           ),
         ),
@@ -201,10 +214,9 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
     );
   }
 
-
   // 💡 保存処理のロジックを分離
   // 保存処理はここに集約（UI -> Notifier）
-  Future<void> _onSavePressed() async{
+  Future<void> _onSavePressed() async {
     final isValid = _formKey.currentState?.validate() ?? false;
     if (!isValid) return;
 
@@ -215,7 +227,7 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
     // こうしないと、キーボードで打った最新の名前が Notifier の state に反映されないぜ。
     notifier.changeEditingName(_nameController.text);
 
-    // 2. 💡 保存処理を実行（引数なしでOKなように Notifier を作ったからな！） 
+    // 2. 💡 保存処理を実行（引数なしでOKなように Notifier を作ったからな！）
     // 💡  Notifier を呼んで VPS に保存！
     await notifier.saveProfile();
 
@@ -234,22 +246,26 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
     }
   }
 
-  Widget _buildSaveButton(bool isSaving){
+  Widget _buildSaveButton(bool isSaving) {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
         onPressed: isSaving ? null : _onSavePressed,
         style: ElevatedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 14),
-          backgroundColor: isSaving ? Colors.grey : const Color.fromARGB(230, 30, 144, 255),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-        child: isSaving 
-          ? const Text('保存中...')
-          : const Text(
-            '変更を保存する',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          backgroundColor: isSaving
+              ? Colors.grey
+              : const Color.fromARGB(230, 30, 144, 255),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
+        ),
+        child: isSaving
+            ? const Text('保存中...')
+            : const Text(
+                '変更を保存する',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
       ),
     );
   }

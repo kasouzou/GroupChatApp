@@ -10,6 +10,11 @@ import 'package:group_chat_app/features/chat/domain/entities/chat_message_model.
 import 'package:group_chat_app/features/chat/domain/entities/message_content.dart';
 import 'package:group_chat_app/features/chat/domain/entities/send_message_response.dart';
 
+/// ChatRepository の実装。
+/// 役割:
+/// 1) LocalキャッシュとRemoteデータの統合
+/// 2) UI向けStream(一覧/メッセージ)の配信
+/// 3) 送信時のRemote委譲
 class ChatRepositoryImpl implements ChatRepository {
   final ChatLocalDataSourceImpl? local;
   final ChatRemoteDataSource remote;
@@ -36,7 +41,9 @@ class ChatRepositoryImpl implements ChatRepository {
     required this.currentUserId,
     this.local,
   }) {
+    // 初回のみ: local + remote から初期データを構築する。
     _startHydrationIfNeeded();
+    // localへの新規保存イベントを購読し、UIへ増分反映する。
     _localSubscription = local?.watchMessages().listen(_upsertAndBroadcast);
   }
 
@@ -144,6 +151,7 @@ class ChatRepositoryImpl implements ChatRepository {
   Future<void> _hydrateFromSources() async {
     try {
       if (local != null) {
+        // 1) ローカルキャッシュを先に読み込む（起動直後の表示を速くする）。
         final localMessages = await local!.getAllMessages();
         for (final message in localMessages) {
           final messages = _messagesByGroup.putIfAbsent(
@@ -158,6 +166,7 @@ class ChatRepositoryImpl implements ChatRepository {
         }
       }
 
+      // 2) リモート最新値で上書き同期する。
       await _syncMyChatsFromRemote();
       await Future.wait(_messagesByGroup.keys.map(_syncMessagesFromRemote));
 
@@ -173,6 +182,7 @@ class ChatRepositoryImpl implements ChatRepository {
   void _startMyChatsPollingIfNeeded() {
     if (_myChatsPollingTimer != null) return;
 
+    // 一覧は一定間隔でリフレッシュ。
     _myChatsPollingTimer = Timer.periodic(_myChatsPollingInterval, (_) async {
       await _syncMyChatsFromRemote();
     });
@@ -181,6 +191,7 @@ class ChatRepositoryImpl implements ChatRepository {
   void _startGroupPollingIfNeeded(String groupId) {
     if (_groupPollingTimers.containsKey(groupId)) return;
 
+    // 各グループメッセージをポーリングで同期（将来はWebSocket化を想定）。
     final timer = Timer.periodic(_messagesPollingInterval, (_) async {
       await _syncMessagesFromRemote(groupId);
     });
@@ -196,6 +207,7 @@ class ChatRepositoryImpl implements ChatRepository {
           .map(ChatRemoteMapper.toGroupSummary)
           .toList();
 
+      // 最新サマリーを丸ごと差し替え（SSOTはRemote）。
       _remoteSummaryByGroup
         ..clear()
         ..addEntries(summaries.map((s) => MapEntry(s.groupId, s)));
@@ -220,6 +232,7 @@ class ChatRepositoryImpl implements ChatRepository {
       final mapped = remoteMessages.map(ChatRemoteMapper.toMessage).toList()
         ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
+      // 競合回避のため現状はRemote優先で置き換える。
       _messagesByGroup[groupId] = mapped;
       _ensureGroupMetadata(groupId);
 

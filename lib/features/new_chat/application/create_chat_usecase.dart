@@ -5,7 +5,15 @@ class CreateChatUsecase {
 
   CreateChatUsecase(this.repository);
 
-  Future<void> call(String name) {
-    return repository.createChat(name);
+  Future<String> call({
+    required String name,
+    required String creatorUserId,
+    required List<String> memberUserIds,
+  }) {
+    return repository.createChat(
+      name: name,
+      creatorUserId: creatorUserId,
+      memberUserIds: memberUserIds,
+    );
   }
 }

@@ -3,9 +3,9 @@ import 'package:group_chat_app/features/chat/domain/entities/message_content.dar
 import 'package:group_chat_app/features/chat/domain/entities/message_status.dart';
 
 class ChatMessageModel {
-  final String localId;        // UUID
-  final String groupId;   // どの家族か
-  final String senderId;  // 送信者のGoogle UID
+  final String localId; // UUID
+  final String groupId; // どの家族か
+  final String senderId; // 送信者のGoogle UID
   final String? serverId;
   final String role; // 役割: "leader" または "member"
   final MessageStatus status;
@@ -13,7 +13,6 @@ class ChatMessageModel {
   final int createdAt;
   final int retryCount;
   final int? nextRetryAtMs;
-
 
   ChatMessageModel({
     required this.localId,
@@ -83,10 +82,10 @@ class ChatMessageModel {
   // 💡 markAsSent は copyWith を使って「差分」だけを伝える
   ChatMessageModel markAsSent({
     required String serverId,
-    required int serverSentAtMs,//サーバー時刻
+    required int serverSentAtMs, //サーバー時刻
   }) {
     if (status == MessageStatus.sent) throw StateError('already sent');
-    
+
     return copyWith(
       status: MessageStatus.sent,
       serverId: serverId,

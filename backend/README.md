@@ -23,12 +23,22 @@ flutter run \
 ```
 
 ## エンドポイント
+- `POST /api/v1/auth/google-login`
+  - Googleログイン情報を受け取り、ユーザーをupsert
+- `GET /api/v1/users/{user_id}`
+  - Profile表示用のユーザー情報取得
+- `PUT /api/v1/users/{user_id}`
+  - Profile更新
+- `POST /api/v1/uploads/profile-image`
+  - 画像アップロードURL発行（現状はダミーURL返却）
+- `POST /api/v1/groups`
+  - NewChatのグループ作成
 - `GET /api/v1/users/{user_id}/groups`
-  - ユーザー所属グループ一覧
+  - Chat一覧（所属グループ）取得
 - `GET /api/v1/groups/{group_id}/messages`
-  - グループメッセージ一覧
+  - Chat画面のメッセージ一覧
 - `POST /api/v1/messages`
-  - メッセージ送信
+  - Chat送信
 
 ## レスポンス方針
 - Flutterの `ChatRemoteDataSourceImpl` が期待するJSON形式に合わせています。

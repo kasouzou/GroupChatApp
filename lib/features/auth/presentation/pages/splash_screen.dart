@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:group_chat_app/features/auth/di/auth_remote_datasource_provider.dart';
+import 'package:group_chat_app/features/auth/di/auth_repository_provider.dart';
+import 'package:group_chat_app/features/auth/di/auth_session_provider.dart';
 import 'package:group_chat_app/features/auth/presentation/pages/login_page.dart';
 import 'package:group_chat_app/ui/youtube_like_bottom_navigation_bar.dart'; // SystemChromeを使うために必要
 
-class SplashScreenPage extends StatefulWidget {
+class SplashScreenPage extends ConsumerStatefulWidget {
   const SplashScreenPage({super.key});
 
   @override
-  State<SplashScreenPage> createState() => _SplashScreenState();
+  ConsumerState<SplashScreenPage> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreenPage> {
+class _SplashScreenState extends ConsumerState<SplashScreenPage> {
   @override
   void initState() {
     super.initState();
@@ -21,17 +25,44 @@ class _SplashScreenState extends State<SplashScreenPage> {
   }
 
   // 画面遷移ロジック
-  _navigateToNextScreen() async {
+  Future<void> _navigateToNextScreen() async {
     // スプラッシュ画面を少し表示するために2秒間待機
     await Future.delayed(const Duration(seconds: 4));
 
-    // ログイン画面へ。（ログインしていたら表示しないかも。）
-    // 後で認証状態に基づいて遷移先を変更するロジックを追加予定
+    // 既存セッションのサイレント復元を試行。
+    final googleSignIn = ref.read(googleSignInProvider);
+    final remote = ref.read(authRemoteDataSourceProvider);
+
+    try {
+      await googleSignIn.initialize();
+      final lightweight = googleSignIn.attemptLightweightAuthentication();
+      final account = lightweight == null ? null : await lightweight;
+      if (account != null) {
+        final user = await remote.loginWithGoogleToken(
+          id: account.id,
+          displayName: account.displayName ?? 'NoName',
+          photoUrl: account.photoUrl ?? '',
+        );
+        ref.read(authSessionProvider.notifier).state = user;
+      }
+    } catch (_) {
+      // サイレント復元失敗時はログイン画面へフォールバック
+    }
+
+    if (!mounted) return;
+    final currentUser = ref.read(authSessionProvider);
+    final destination = currentUser == null
+        ? const LoginPage()
+        : const YoutubeLikeBottomNavigationBar();
+    final routeName = currentUser == null
+        ? 'LoginPage'
+        : 'YoutubeLikeBottomNavigationBar';
+
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => const LoginPage(),
-        settings: RouteSettings(name: 'LoginPage'), // ← 名前を付ける
+        builder: (context) => destination,
+        settings: RouteSettings(name: routeName),
       ),
     );
   }
@@ -39,7 +70,10 @@ class _SplashScreenState extends State<SplashScreenPage> {
   @override
   void dispose() {
     // 💡 画面が破棄される時に元のUI設定に戻す
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.manual,
+      overlays: SystemUiOverlay.values,
+    );
     super.dispose();
   }
 
@@ -51,7 +85,7 @@ class _SplashScreenState extends State<SplashScreenPage> {
       decoration: BoxDecoration(
         image: DecorationImage(
           // AssetBitmap や NetworkImage も選べる
-          image: AssetImage('assets/image/splashscreen.png'), 
+          image: AssetImage('assets/image/splashscreen.png'),
           // fit: 組み込み。画像をどう画面に収めるか。
           // BoxFit.cover なら、画面いっぱいに（比率を保って）敷き詰めてくれる。
           fit: BoxFit.cover,
@@ -72,22 +106,27 @@ class _SplashScreenState extends State<SplashScreenPage> {
               // ロゴ画像を表示（角を丸くする）
               // ClipRRect( // ここを追加
               //   borderRadius: BorderRadius.circular(20.0), // ここで角の丸みを設定（例: 20.0）
-                // child: 
-                Image.asset(
-                  'assets/icon/icon.png',
-                  width: 150,
-                  height: 150,
-                  fit: BoxFit.contain,
-                  errorBuilder: (BuildContext context, Object error, StackTrace? stackTrace) {
-                    // エラー発生時にコンソール出力
-                    print('画像の読み込みに失敗しました: $error');
-                    return Icon(
-                      Icons.error,
-                      size: 100,
-                      color: Colors.white, // 自作,
-                    ); // 代替表示
-                  }
-                ),
+              // child:
+              Image.asset(
+                'assets/icon/icon.png',
+                width: 150,
+                height: 150,
+                fit: BoxFit.contain,
+                errorBuilder:
+                    (
+                      BuildContext context,
+                      Object error,
+                      StackTrace? stackTrace,
+                    ) {
+                      // エラー発生時にコンソール出力
+                      print('画像の読み込みに失敗しました: $error');
+                      return Icon(
+                        Icons.error,
+                        size: 100,
+                        color: Colors.white, // 自作,
+                      ); // 代替表示
+                    },
+              ),
               // ), // ここを追加
               const SizedBox(height: 20),
               // ロゴの下にテキストを表示

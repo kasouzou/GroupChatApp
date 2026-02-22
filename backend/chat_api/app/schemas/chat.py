@@ -2,11 +2,13 @@ from pydantic import BaseModel, Field
 
 
 class TextContent(BaseModel):
+    # textメッセージ用JSON
     type: str = Field(default="text")
     text: str
 
 
 class ImageContent(BaseModel):
+    # 画像メッセージ用JSON
     type: str = Field(default="image")
     file_name: str
     size_in_bytes: int
@@ -15,6 +17,7 @@ class ImageContent(BaseModel):
 
 
 class SendMessageRequest(BaseModel):
+    # Flutter -> FastAPI の送信Payload
     local_id: str
     group_id: str
     sender_id: str
@@ -24,11 +27,13 @@ class SendMessageRequest(BaseModel):
 
 
 class SendMessageResponse(BaseModel):
+    # サーバー確定ID/時刻を返す
     server_id: str
     server_sent_at_ms: int
 
 
 class GroupSummaryResponse(BaseModel):
+    # 一覧画面向けサマリー
     group_id: str
     group_name: str
     last_message_preview: str
@@ -42,6 +47,7 @@ class ListGroupsResponse(BaseModel):
 
 
 class MessageResponse(BaseModel):
+    # チャット画面向けメッセージDTO
     local_id: str
     server_id: str
     group_id: str

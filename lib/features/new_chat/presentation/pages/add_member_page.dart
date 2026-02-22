@@ -16,7 +16,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
   final String _inviteCode = "123-456";
   // ★ 独自変数：スキャン用のデータ（ディズニーランドのURL）
   final String _qrData = "https://www.tokyodisneyresort.jp/tdl/";
-  
+
   // ★ 状態管理変数：連続スキャンを防ぐためのフラグ
   bool _isProcessing = false;
 
@@ -27,16 +27,16 @@ class _AddMemberPageState extends State<AddMemberPage> {
       child: Scaffold(
         appBar: AppBar(
           leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.white),
-          onPressed: () async {
-            final shouldDiscard = await showDiscardDialog(context);
-            if (shouldDiscard != true) {
-              return;
-            }
-            debugPrint('×ボタンが押されました。編集を破棄して戻ります。(メンバー追加画面)');
-            Navigator.pop(context, 'cancel');
-          },
-        ),
+            icon: const Icon(Icons.close, color: Colors.white),
+            onPressed: () async {
+              final shouldDiscard = await showDiscardDialog(context);
+              if (shouldDiscard != true) {
+                return;
+              }
+              debugPrint('×ボタンが押されました。編集を破棄して戻ります。(メンバー追加画面)');
+              Navigator.pop(context, 'cancel');
+            },
+          ),
           title: const Text(
             'メンバー追加',
             style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
@@ -51,10 +51,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
         ),
         body: TabBarView(
           physics: const NeverScrollableScrollPhysics(), // スキャン中の誤操作防止
-          children: [
-            _buildScannerTab(),
-            _buildInviteTab(),
-          ],
+          children: [_buildScannerTab(), _buildInviteTab()],
         ),
       ),
     );
@@ -93,10 +90,8 @@ class _AddMemberPageState extends State<AddMemberPage> {
         ),
         // 処理中のインジケーター（ロード中なら出す）
         if (_isProcessing)
-          const Center(
-            child: CircularProgressIndicator(color: Colors.white),
-          ),
-          
+          const Center(child: CircularProgressIndicator(color: Colors.white)),
+
         // 手入力への逃げ道
         Positioned(
           bottom: 40,
@@ -108,7 +103,10 @@ class _AddMemberPageState extends State<AddMemberPage> {
               icon: const Icon(Icons.keyboard),
               label: const Text('招待コードを手入力する'),
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
               ),
             ),
           ),
@@ -119,9 +117,11 @@ class _AddMemberPageState extends State<AddMemberPage> {
 
   // --- タブ2：招待画面（親がQRを見せる想定） ---
   Widget _buildInviteTab() {
-    return SingleChildScrollView( // ★ 追加：これで縦方向の溢れを解消
+    return SingleChildScrollView(
+      // ★ 追加：これで縦方向の溢れを解消
       padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 40.0),
-      child: Center( // ★ 中央寄せを維持するために追加
+      child: Center(
+        // ★ 中央寄せを維持するために追加
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -131,7 +131,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 30),
-            
+
             // 組み込みウィジェット：QRコード
             QrImageView(
               data: _qrData,
@@ -139,16 +139,13 @@ class _AddMemberPageState extends State<AddMemberPage> {
               size: 250.0,
               backgroundColor: Colors.white,
             ),
-            
+
             const SizedBox(height: 40),
             const Divider(),
             const SizedBox(height: 20),
-            const Text(
-              'または、この番号を教えてね：',
-              style: TextStyle(color: Colors.grey),
-            ),
+            const Text('または、この番号を教えてね：', style: TextStyle(color: Colors.grey)),
             const SizedBox(height: 10),
-            
+
             // 招待コードを大きく表示
             Text(
               _inviteCode,
@@ -159,13 +156,13 @@ class _AddMemberPageState extends State<AddMemberPage> {
                 color: Colors.blueAccent,
               ),
             ),
-            
+
             const SizedBox(height: 10),
             const Text(
               '※ 5分間だけ有効です',
               style: TextStyle(color: Colors.redAccent, fontSize: 12),
             ),
-            
+
             // ★ マクロな視点：スクロール可能になったので、下に余白を追加
             const SizedBox(height: 40),
           ],
@@ -186,8 +183,14 @@ class _AddMemberPageState extends State<AddMemberPage> {
           decoration: InputDecoration(hintText: '6桁の番号を入力'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('キャンセル')),
-          ElevatedButton(onPressed: () => Navigator.pop(context), child: const Text('参加する')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('キャンセル'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('参加する'),
+          ),
         ],
       ),
     );

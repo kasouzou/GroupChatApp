@@ -3,6 +3,8 @@ import 'package:group_chat_app/features/chat/domain/entities/chat_message_model.
 import 'package:group_chat_app/features/chat/domain/entities/message_content.dart';
 import 'package:group_chat_app/features/chat/domain/entities/message_status.dart';
 
+/// メッセージ送信時のHTTPリクエストPayload。
+/// DomainのMessageContentをAPI受け渡し用JSONへ変換する責務を持つ。
 class RemoteSendMessageRequest {
   final String localId;
   final String groupId;
@@ -68,6 +70,8 @@ class RemoteSendMessageResult {
   }
 }
 
+/// Remote JSON <-> Domain Entity の変換器。
+/// 変換ロジックを1箇所に集約して、Repositoryを読みやすく保つ。
 class ChatRemoteMapper {
   static ChatGroupSummary toGroupSummary(Map<String, dynamic> json) {
     return ChatGroupSummary(

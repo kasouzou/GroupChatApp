@@ -34,7 +34,7 @@ class ChatUiState {
   /// テスト用のデフォルト値を返します
   factory ChatUiState.initial() {
     return const ChatUiState(
-      groupId: 'family_group_001',
+      groupId: '',
       currentUserId: '',
       currentUserRole: 'member',
     );

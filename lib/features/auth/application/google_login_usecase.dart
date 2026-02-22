@@ -1,26 +1,17 @@
-// import 'package:google_sign_in/google_sign_in.dart';
+import 'package:group_chat_app/core/models/user_model.dart';
+import 'package:group_chat_app/features/auth/domain/auth_repository.dart';
 
-// class GoogleLoginLogic {
-//   // 組み込みクラス GoogleSignIn のインスタンスを独自に宣言
-//   final GoogleSignIn _googleSignIn = GoogleSignIn(
-//     scopes: ['email'],
-//   );
+/// ログイン画面から呼ばれるユースケース。
+class GoogleLoginUseCase {
+  final AuthRepository _repository;
 
-//   // 現在ログインしているユーザー情報を取得するゲッター
-//   GoogleSignInAccount? get currentUser => _googleSignIn.currentUser;
+  GoogleLoginUseCase(this._repository);
 
-//   // ログイン処理
-//   Future<GoogleSignInAccount?> signIn() async {
-//     try {
-//       // Google のサインイン画面を呼び出す組み込みメソッド
-//       final GoogleSignInAccount? account = await _googleSignIn.signIn();
-//       return account;
-//     } catch (error) {
-//       print('ログインエラー: $error');
-//       return null;
-//     }
-//   }
+  Future<UserModel?> signIn() {
+    return _repository.signInWithGoogle();
+  }
 
-//   // ログアウト処理
-//   Future<void> signOut() => _googleSignIn.signOut();
-// }
+  Future<void> signOut() {
+    return _repository.signOut();
+  }
+}

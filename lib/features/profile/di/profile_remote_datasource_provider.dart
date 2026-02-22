@@ -5,7 +5,9 @@ import '../data/datasource/remote/profile_remote_datasource.dart';
 part 'profile_remote_datasource_provider.g.dart';
 
 @riverpod
-ProfileRemoteDataSource profileRemoteDataSource(ProfileRemoteDataSourceRef ref) {
+ProfileRemoteDataSource profileRemoteDataSource(
+  ProfileRemoteDataSourceRef ref,
+) {
   // ref.onDispose(() => impl.dispose());
   return ProfileRemoteDatasourceImpl();
 }

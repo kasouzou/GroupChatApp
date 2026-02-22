@@ -14,7 +14,8 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     // 組み込みのMediaQueryを使って画面の向きを判定（レスポンシブ対応用）
-    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
 
     return Container(
       decoration: BoxDecoration(
@@ -35,7 +36,9 @@ class _SettingsPageState extends State<SettingsPage> {
           leading: IconButton(
             icon: const Icon(Icons.close, color: Colors.white),
             onPressed: () async {
-              debugPrint('×ボタンが押されました。"done" を持って前の画面へ戻ります[SettingsPage(設定画面)]');
+              debugPrint(
+                '×ボタンが押されました。"done" を持って前の画面へ戻ります[SettingsPage(設定画面)]',
+              );
               Navigator.pop(context, 'done');
             },
           ),
@@ -65,7 +68,7 @@ class _SettingsPageState extends State<SettingsPage> {
               // ★ ここが解決策：SliverSafeArea を使って、
               // 上部のAppBarとの干渉を避けつつ、下部の島ナビバー側は突き抜けさせる
               SliverSafeArea(
-                top: true,    // ステータスバーとAppBarの余白を確保
+                top: true, // ステータスバーとAppBarの余白を確保
                 bottom: false, // 下部はマニュアル余白（height: 120）で制御
                 sliver: SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -81,24 +84,36 @@ class _SettingsPageState extends State<SettingsPage> {
                           title: '通知設定',
                           onTap: () => print("通知設定へ遷移"),
                         ),
-                        
-                        const Divider(height: 1, thickness: 0.5, color: Colors.white24),
-                        
+
+                        const Divider(
+                          height: 1,
+                          thickness: 0.5,
+                          color: Colors.white24,
+                        ),
+
                         // テーマカラー
                         _buildSettingsTile(
                           title: 'テーマカラー',
                           onTap: () => print("テーマカラーへ遷移"),
                         ),
-                        
-                        const Divider(height: 1, thickness: 0.5, color: Colors.white24),
-                        
+
+                        const Divider(
+                          height: 1,
+                          thickness: 0.5,
+                          color: Colors.white24,
+                        ),
+
                         // プライバシーポリシー
                         _buildSettingsTile(
                           title: 'プライバシーポリシー',
                           onTap: () => print("プライバシーポリシーへ遷移"),
                         ),
 
-                        const Divider(height: 1, thickness: 0.5, color: Colors.white24),
+                        const Divider(
+                          height: 1,
+                          thickness: 0.5,
+                          color: Colors.white24,
+                        ),
 
                         // 利用規約
                         _buildSettingsTile(
@@ -106,16 +121,18 @@ class _SettingsPageState extends State<SettingsPage> {
                           onTap: () => print("利用規約へ遷移"),
                         ),
 
-                        const Divider(height: 1, thickness: 0.5, color: Colors.white24),
+                        const Divider(
+                          height: 1,
+                          thickness: 0.5,
+                          color: Colors.white24,
+                        ),
                       ],
                     ),
                   ),
                 ),
               ),
               // 下部の余白（島ナビバーとの干渉避け）
-              const SliverToBoxAdapter(
-                child: SizedBox(height: 120),
-              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 120)),
             ],
           ),
         ),
@@ -135,10 +152,7 @@ class _SettingsPageState extends State<SettingsPage> {
         gradient: const LinearGradient(
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
-          colors: [
-            Color.fromARGB(214, 0, 0, 0),
-            Color.fromARGB(99, 0, 0, 0),
-          ],
+          colors: [Color.fromARGB(214, 0, 0, 0), Color.fromARGB(99, 0, 0, 0)],
         ),
         borderRadius: BorderRadius.circular(12),
       ),

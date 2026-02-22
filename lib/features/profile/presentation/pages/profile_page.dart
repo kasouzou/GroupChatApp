@@ -1,6 +1,7 @@
 // プロフィール画面です。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'; // 💡 追加：Riverpodのインポート
+import 'package:group_chat_app/features/auth/di/auth_session_provider.dart';
 import 'package:group_chat_app/features/profile/presentation/providers/profile_notifier.dart';
 import 'package:group_chat_app/features/profile/presentation/pages/profile_edit_page.dart';
 import 'package:group_chat_app/features/profile/presentation/pages/settings_page.dart';
@@ -17,41 +18,52 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   bool _isSettingsPressed = false;
 
   @override
-  void initState(){
-
+  void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-
-      if(!mounted) return;
-      // userIdは認証や別プロバイダから取得する予定
-      final userId = /* e.g.ref.read.(authProvider).userId */ '今のユーザーID';
+      if (!mounted) return;
+      // 認証セッションの userId を使う。未ログイン時は環境変数デフォルトへフォールバック。
+      final sessionUser = ref.read(authSessionProvider);
+      const fallbackUserId = String.fromEnvironment(
+        'CHAT_USER_ID',
+        defaultValue: 'user-001',
+      );
+      final userId = sessionUser?.id ?? fallbackUserId;
       ref.read(profileNotifierProvider.notifier).loadUser(userId);
     });
-
   }
-  
+
   // SettingsPageへの遷移メソッド
-  Future<void> _openSettings () async {
-    debugPrint('--- 今は[profile_page(プロフィール画面)]にいます。 遷移開始: SettingsPageへ (rootNavigator: true(意味：ボトムナビゲーションバーの画面スタックじゃなくてRootNavigatorの画面スタックに積むよ)) ---');
+  Future<void> _openSettings() async {
+    debugPrint(
+      '--- 今は[profile_page(プロフィール画面)]にいます。 遷移開始: SettingsPageへ (rootNavigator: true(意味：ボトムナビゲーションバーの画面スタックじゃなくてRootNavigatorの画面スタックに積むよ)) ---',
+    );
     // rootNavigator: true でボトムバーを隠す世界へ
     final result = await Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute(
         builder: (context) => SettingsPage(),
         settings: const RouteSettings(name: 'SettingsPage'),
-      )
+      ),
     );
-    debugPrint('--- 今は[profile_page(プロフィール画面)]にいます。 SettingsPageから戻りました。受け取った結果: $result ---');
+    debugPrint(
+      '--- 今は[profile_page(プロフィール画面)]にいます。 SettingsPageから戻りました。受け取った結果: $result ---',
+    );
   }
 
   /// 編集画面へ遷移する。未ロードならロードしてから startEditing -> push することで
   /// ProfileEditPage 側で state.user が確実に存在するようにする（引き継ぎの保証）。
-  Future<void> _openProfileEdit () async{
+  Future<void> _openProfileEdit() async {
     final notifier = ref.read(profileNotifierProvider.notifier);
     final state = ref.read(profileNotifierProvider);
 
     // userId が空なら（未ロードなら）ここでロードする。userId の取得方法はアプリ次第。
     if (state.user.id.isEmpty) {
-      final userId = /* e.g. ref.read(authProvider).currentUserId */ 'ユーザーID';
+      final sessionUser = ref.read(authSessionProvider);
+      const fallbackUserId = String.fromEnvironment(
+        'CHAT_USER_ID',
+        defaultValue: 'user-001',
+      );
+      final userId = sessionUser?.id ?? fallbackUserId;
       await notifier.loadUser(userId);
     }
 
@@ -59,16 +71,20 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     notifier.startEditing();
 
     // 遷移（rootNavigator を使ってボトムナビゲーションの外に積む設計）
-    debugPrint('--- 今は[profile_page(プロフィール画面)]にいます。 遷移開始: プロフィール編集画面へ (rootNavigator: true(意味：ボトムナビゲーションバーの画面スタックじゃなくてRootNavigatorの画面スタックに積むよ)) ---');
+    debugPrint(
+      '--- 今は[profile_page(プロフィール画面)]にいます。 遷移開始: プロフィール編集画面へ (rootNavigator: true(意味：ボトムナビゲーションバーの画面スタックじゃなくてRootNavigatorの画面スタックに積むよ)) ---',
+    );
     // rootNavigator: true でボトムバーを隠す世界へ
     final result = await Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute(
         builder: (context) => ProfileEditPage(),
-        settings: const RouteSettings(name: 'ProfileEditPage')
-      )
+        settings: const RouteSettings(name: 'ProfileEditPage'),
+      ),
     );
-    debugPrint('--- 今は[profile_page(プロフィール画面)]にいます。 プロフィール編集画面から戻りました。受け取った結果: $result ---');
-  } 
+    debugPrint(
+      '--- 今は[profile_page(プロフィール画面)]にいます。 プロフィール編集画面から戻りました。受け取った結果: $result ---',
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -76,7 +92,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     // これにより、編集画面で保存が成功すると、この build() が自動で再実行されるぜ
     final profileState = ref.watch(profileNotifierProvider);
     final user = profileState.user;
-
 
     // 画面サイズを取得して、横向きかどうかを判定する（マクロな視点）
     // final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
@@ -117,8 +132,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   child: Icon(
                     // 三項演算子でアイコンを切り替え
                     _isSettingsPressed
-                        ? Icons.settings // 押してる時：塗りつぶし
-                        : Icons.settings_outlined,      // 離してる時：線
+                        ? Icons
+                              .settings // 押してる時：塗りつぶし
+                        : Icons.settings_outlined, // 離してる時：線
                     key: ValueKey<bool>(_isSettingsPressed),
                     size: 30,
                     color: Colors.white,
@@ -161,7 +177,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             // ★ 1. 左から右へのグラデーション（独自のデザイン！）
                             gradient: const LinearGradient(
                               begin: Alignment.centerLeft, // 左から
-                              end: Alignment.centerRight,  // 右へ
+                              end: Alignment.centerRight, // 右へ
                               colors: [
                                 Color.fromARGB(215, 0, 6, 117), // 濃い青
                                 Color.fromARGB(100, 102, 126, 234), // 薄い青
@@ -179,24 +195,33 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                               onTap: _openProfileEdit,
                               splashColor: Colors.white.withOpacity(0.2),
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 10,
+                                  horizontal: 12,
+                                ),
                                 child: Row(
                                   children: [
                                     // 💡 3. アイコン画像の出し分け
                                     CircleAvatar(
                                       radius: 35,
                                       backgroundImage: user.photoUrl.isNotEmpty
-                                        ? NetworkImage(user.photoUrl) as ImageProvider
-                                        : AssetImage('assets/image/treatGemini.png'),
+                                          ? NetworkImage(user.photoUrl)
+                                                as ImageProvider
+                                          : AssetImage(
+                                              'assets/image/treatGemini.png',
+                                            ),
                                     ),
                                     const SizedBox(width: 16),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           // 💡 4. キャッシュされた名前を表示！
                                           Text(
-                                            user.displayName.isNotEmpty ? user.displayName : '未設定',
+                                            user.displayName.isNotEmpty
+                                                ? user.displayName
+                                                : '未設定',
                                             style: const TextStyle(
                                               fontWeight: FontWeight.bold,
                                               fontSize: 18,
@@ -208,7 +233,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                           Text(
                                             'OpenAI社の最高経営責任者',
                                             style: TextStyle(
-                                              color: Colors.white.withOpacity(0.9), // グラデの上で見えやすいよう少し濃く
+                                              color: Colors.white.withOpacity(
+                                                0.9,
+                                              ), // グラデの上で見えやすいよう少し濃く
                                               fontSize: 14,
                                             ),
                                           ),
@@ -238,9 +265,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   ),
                 ),
                 // 下部の余白（島ナビバーとの干渉避け）
-                const SliverToBoxAdapter(
-                  child: SizedBox(height: 120),
-                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 120)),
               ],
             ),
           ),

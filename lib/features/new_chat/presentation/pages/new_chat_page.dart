@@ -12,9 +12,7 @@ class NewChatPage extends StatelessWidget {
     final screenShortSide = mediaQuery.size.shortestSide;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('チャット作成＆メンバー追加'),
-      ),
+      appBar: AppBar(title: const Text('チャット作成＆メンバー追加')),
       body: SafeArea(
         // LayoutBuilderを使って親（画面）の最大高さを取得する
         child: LayoutBuilder(
@@ -24,11 +22,12 @@ class NewChatPage extends StatelessWidget {
               child: ConstrainedBox(
                 // コンテンツの最小高さを画面の高さ(constraints.maxHeight)に設定
                 // これにより、CenterやMainAxisAlignment.centerが画面全体に対して機能する
-                constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight,
-                ),
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24.0,
+                    vertical: 20.0,
+                  ),
                   child: Center(
                     child: Flex(
                       direction: isLandscape ? Axis.horizontal : Axis.vertical,
@@ -80,16 +79,15 @@ class NewChatPage extends StatelessWidget {
     required bool isLandscape,
   }) {
     // 縦画面(Portrait)の時は少し大きめ(0.45)に設定して「ドカーン」感を出す
-    final double buttonSize = isLandscape ? screenShortSide * 0.35 : screenShortSide * 0.45;
+    final double buttonSize = isLandscape
+        ? screenShortSide * 0.35
+        : screenShortSide * 0.45;
 
     return SizedBox(
       width: buttonSize,
       height: buttonSize,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(
-          minWidth: 150,
-          minHeight: 150,
-        ),
+        constraints: const BoxConstraints(minWidth: 150, minHeight: 150),
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color.fromARGB(255, 56, 210, 25),

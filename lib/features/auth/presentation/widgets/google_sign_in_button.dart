@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 
 class GoogleSignInButton extends StatelessWidget {
-  final VoidCallback onPressed; // 独自に定義したコールバック関数
+  final VoidCallback? onPressed; // ロード中はnullで無効化
+  final bool isLoading;
 
-  const GoogleSignInButton({super.key, required this.onPressed});
+  const GoogleSignInButton({
+    super.key,
+    required this.onPressed,
+    this.isLoading = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -22,6 +27,14 @@ class GoogleSignInButton extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min, // ボタンの幅をコンテンツ（画像と文字）に合わせる
         children: [
+          if (isLoading) ...[
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(width: 12),
+          ],
           // ★ 修正ポイント：Iconから本物の画像（独自アセット）へ
           Image.asset(
             'assets/google_sign_in_icons/Android/png@4x/neutral/android_neutral_rd_na@4x.png',
@@ -34,8 +47,8 @@ class GoogleSignInButton extends StatelessWidget {
             },
           ),
           const SizedBox(width: 12), // ロゴとテキストの間の「クリアスペース」
-          const Text(
-            'Google でサインイン', // ガイドラインに多い表記
+          Text(
+            isLoading ? 'ログイン中...' : 'Google でサインイン',
             style: TextStyle(
               color: Color(0xFF757575), // 公式推奨のテキスト色（濃いめのグレー）
               fontWeight: FontWeight.w500,

@@ -11,7 +11,7 @@ class ProfileUiModel {
 
   // 3. モード管理フラグ
   final bool isEditing; // trueなら編集画面、falseなら表示画面
-  final bool isSaving;  // 保存ボタン押下後のグルグル（Loading）状態
+  final bool isSaving; // 保存ボタン押下後のグルグル（Loading）状態
 
   final String? errorMessage;
 

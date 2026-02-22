@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:group_chat_app/features/auth/di/auth_session_provider.dart';
 import 'package:group_chat_app/features/chat/di/chat_repository_provider.dart';
 import 'package:group_chat_app/features/chat/domain/entities/chat_message_model.dart';
 import 'package:group_chat_app/features/chat/domain/entities/message_content.dart';
 import 'package:group_chat_app/features/chat/presentation/providers/chat_notifier.dart';
-import 'package:uuid/uuid.dart';
 
 /// 単一グループのチャット画面。
 /// 呼び出し元から受け取った groupId/groupName を表示・送信に利用する。
@@ -34,13 +34,20 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   @override
   void initState() {
     super.initState();
-    // 画面生成時に確定したコンテキストを保持する。
-    _myGoogleUid = widget.currentUserId ?? const Uuid().v4();
+    // 画面生成時に確定したコンテキストを保持する（認証セッション優先）。
+    final sessionUser = ref.read(authSessionProvider);
+    const fallbackUserId = String.fromEnvironment(
+      'CHAT_USER_ID',
+      defaultValue: 'user-001',
+    );
+    _myGoogleUid = widget.currentUserId ?? sessionUser?.id ?? fallbackUserId;
     _currentGroupId = widget.groupId;
 
     // 送信処理が参照する状態をNotifierへ反映。
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(chatNotifierProvider.notifier).setChatContext(
+      ref
+          .read(chatNotifierProvider.notifier)
+          .setChatContext(
             groupId: _currentGroupId,
             currentUserId: _myGoogleUid,
             currentUserRole: 'member',
@@ -144,7 +151,9 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
-        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isMe
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!isMe)
@@ -154,7 +163,9 @@ class _ChatPageState extends ConsumerState<ChatPage> {
             ),
           const SizedBox(width: 8),
           Column(
-            crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            crossAxisAlignment: isMe
+                ? CrossAxisAlignment.end
+                : CrossAxisAlignment.start,
             children: [
               if (!isMe)
                 Text(
@@ -233,7 +244,9 @@ class _ChatPageState extends ConsumerState<ChatPage> {
               ),
             ),
             IconButton(
-              onPressed: isSending ? null : () => _sendMessage(_textController.text),
+              onPressed: isSending
+                  ? null
+                  : () => _sendMessage(_textController.text),
               icon: isSending
                   ? const SizedBox(
                       width: 18,

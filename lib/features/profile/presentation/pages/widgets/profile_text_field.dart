@@ -24,10 +24,7 @@ class ProfileTextField extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
-          colors: [
-            Color.fromARGB(200, 0, 0, 0),
-            Color.fromARGB(99, 0, 0, 0),
-          ],
+          colors: [Color.fromARGB(200, 0, 0, 0), Color.fromARGB(99, 0, 0, 0)],
         ),
         borderRadius: BorderRadius.circular(12),
       ),

@@ -56,7 +56,8 @@ class ProfileNotifier extends _$ProfileNotifier {
   }
 
   void changeEditingName(String v) => state = state.copyWith(editingName: v);
-  void changeEditingPhotoPath(String p) => state = state.copyWith(editingPhotoUrl: p);
+  void changeEditingPhotoPath(String p) =>
+      state = state.copyWith(editingPhotoUrl: p);
 
   Future<void> pickImageFromGallery() async {
     final picker = ImagePicker();
