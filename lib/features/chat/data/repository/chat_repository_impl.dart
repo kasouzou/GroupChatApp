@@ -15,6 +15,18 @@ import 'package:group_chat_app/features/chat/domain/entities/send_message_respon
 /// 1) LocalキャッシュとRemoteデータの統合
 /// 2) UI向けStream(一覧/メッセージ)の配信
 /// 3) 送信時のRemote委譲
+///
+/// データフロー（起動時）:
+/// - _startHydrationIfNeeded()
+///   -> local.getAllMessages() で即時表示可能なキャッシュを復元
+///   -> remote.fetchMyChats() でグループ一覧を同期
+///   -> groupごとに remote.fetchMessages() で本文同期
+///   -> StreamController へ通知してUI更新
+///
+/// データフロー（送信時）:
+/// - saveMessage() でローカル即時反映（楽観的UI）
+/// - sendMessage() でサーバー確定値を取得
+/// - 確定値を再保存して表示を整合させる
 class ChatRepositoryImpl implements ChatRepository {
   final ChatLocalDataSourceImpl? local;
   final ChatRemoteDataSource remote;
@@ -103,6 +115,7 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   Future<void> dispose() async {
+    // Provider破棄時にタイマー・購読・ストリームを確実に解放する。
     await _localSubscription?.cancel();
     _myChatsPollingTimer?.cancel();
     for (final timer in _groupPollingTimers.values) {
@@ -115,6 +128,10 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   void _upsertAndBroadcast(ChatMessageModel message) {
+    // 同一メッセージ判定:
+    // - localId一致（ローカル生成ID）
+    // - serverId一致（サーバー確定ID）
+    // のどちらかで同一とみなす。
     final messages = _messagesByGroup.putIfAbsent(
       message.groupId,
       () => <ChatMessageModel>[],
@@ -173,6 +190,7 @@ class ChatRepositoryImpl implements ChatRepository {
       _broadcastAllGroups();
       _emitChatSummaries();
     } catch (e, st) {
+      // 起動時同期で一部失敗してもUIを止めない（可用性優先）。
       developer.log('chat hydrate failed', error: e, stackTrace: st);
       _broadcastAllGroups();
       _emitChatSummaries();
@@ -222,6 +240,7 @@ class ChatRepositoryImpl implements ChatRepository {
 
       _emitChatSummaries();
     } catch (e, st) {
+      // 一覧同期失敗時は直前状態を維持しつつログのみ残す。
       developer.log('sync my chats failed', error: e, stackTrace: st);
     }
   }

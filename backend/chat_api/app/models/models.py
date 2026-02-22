@@ -28,6 +28,9 @@ class AppUser(Base):
         default=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
+    # NOTE:
+    # - 認証プロバイダ固有情報(google_sub等)を持たせる場合は列追加する。
+    # - 本番ではユニーク制約や監査カラム(created_by等)追加を検討。
 
 
 class ChatGroup(Base):
@@ -74,3 +77,5 @@ class ChatMessage(Base):
     image_height: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at_ms: Mapped[int] = mapped_column(BigInteger, nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="sent")
+    # NOTE:
+    # - 本番で編集/削除履歴を持つ場合は version 列や deleted_at 列を追加する。

@@ -3,6 +3,15 @@ import 'package:group_chat_app/features/profile/data/datasource/local/profile_lo
 import 'package:group_chat_app/features/profile/data/datasource/remote/profile_remote_datasource.dart';
 import 'package:group_chat_app/features/profile/domain/profile_repository.dart';
 
+/// ProfileRepository 実装。
+///
+/// 読み取り方針:
+/// - Remoteを第一優先（SSOT）
+/// - Remote失敗時はLocalへフォールバック
+///
+/// 書き込み方針:
+/// - Remote更新成功後にLocal更新
+/// - UIにはサーバー確定値を返す
 class ProfileRepositoryImpl implements ProfileRepository {
   final ProfileLocalDataSource local;
   final ProfileRemoteDataSource remote;

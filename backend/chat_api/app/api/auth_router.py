@@ -16,6 +16,12 @@ async def google_login(
     db: AsyncSession = Depends(get_db),
 ) -> UserResponse:
     # Googleログイン成功時にユーザーをupsertする。
+    # ここを統一窓口にすることで、将来JWT発行や監査ログを追加しやすくなる。
+    #
+    # フロー:
+    # 1. ユーザー存在確認
+    # 2. 未登録なら新規作成、既存ならプロフィール更新
+    # 3. コミット後、サーバー確定値を返却
     user = await db.get(AppUser, payload.id)
     now = datetime.now(timezone.utc)
 

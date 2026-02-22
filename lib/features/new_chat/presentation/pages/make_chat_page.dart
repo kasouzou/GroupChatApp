@@ -4,6 +4,12 @@ import 'package:group_chat_app/features/auth/di/auth_session_provider.dart';
 import 'package:group_chat_app/features/new_chat/di/create_chat_usecase_provider.dart';
 import 'package:group_chat_app/shared/widgets/show_discard_dialog.dart';
 
+/// グループ作成画面。
+///
+/// 責務:
+/// - チャット名・権限UI入力
+/// - 保存時に CreateChatUsecase を呼ぶ
+/// - 作成成功で groupId を前画面へ返却
 class MakeChatPage extends ConsumerStatefulWidget {
   const MakeChatPage({super.key});
 
@@ -152,6 +158,7 @@ class _MakeChatPageState extends ConsumerState<MakeChatPage> {
   }
 
   Future<void> _onSavePressed() async {
+    // 1) 入力チェック
     final name = _chatNameController.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(
@@ -160,6 +167,7 @@ class _MakeChatPageState extends ConsumerState<MakeChatPage> {
       return;
     }
 
+    // 2) 保存開始（多重送信防止）
     setState(() => _isSaving = true);
     try {
       final currentUser = ref.read(authSessionProvider);
@@ -170,6 +178,7 @@ class _MakeChatPageState extends ConsumerState<MakeChatPage> {
       final creatorUserId = currentUser?.id ?? fallbackUserId;
       final usecase = ref.read(createChatUsecaseProvider);
 
+      // 3) UseCase実行 -> APIでグループ作成
       final groupId = await usecase.call(
         name: name,
         creatorUserId: creatorUserId,
@@ -187,6 +196,7 @@ class _MakeChatPageState extends ConsumerState<MakeChatPage> {
         context,
       ).showSnackBar(SnackBar(content: Text('作成に失敗しました: $e')));
     } finally {
+      // 4) 保存状態を戻す
       if (mounted) setState(() => _isSaving = false);
     }
   }

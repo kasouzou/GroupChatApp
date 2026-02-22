@@ -33,7 +33,8 @@ async def list_user_groups(user_id: str, db: AsyncSession = Depends(get_db)) -> 
     groups_result = await db.execute(groups_stmt)
     groups = groups_result.scalars().all()
 
-    # 2) グループ単位で最新メッセージとメンバー数を集約して返す
+    # 2) グループ単位で最新メッセージとメンバー数を集約して返す。
+    # 現在は unread_count を 0 固定で返す。将来は既読テーブル導入で算出可能。
     summaries: list[GroupSummaryResponse] = []
     for group in groups:
         latest_message_stmt: Select[tuple[ChatMessage]] = (
@@ -88,7 +89,8 @@ async def send_message(payload: SendMessageRequest, db: AsyncSession = Depends(g
     if group is None:
         raise HTTPException(status_code=404, detail="group not found")
 
-    # サーバー確定値（ID/時刻）を発行
+    # サーバー確定値（ID/時刻）を発行。
+    # created_at_ms はクライアント入力を信用せず、サーバー値で確定する。
     server_id = str(uuid4())
     server_sent_at_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
 

@@ -6,6 +6,11 @@ import 'package:group_chat_app/features/profile/data/datasource/remote/profile_r
 import 'package:http/http.dart' as http;
 
 /// Profileタブ専用のリモート通信実装。
+///
+/// エンドポイント対応:
+/// - GET  /api/v1/users/{user_id}
+/// - PUT  /api/v1/users/{user_id}
+/// - POST /api/v1/uploads/profile-image
 class ProfileRemoteDatasourceImpl implements ProfileRemoteDataSource {
   final http.Client _client;
 
@@ -14,6 +19,7 @@ class ProfileRemoteDatasourceImpl implements ProfileRemoteDataSource {
 
   @override
   Future<UserModel> fetchUser(String userId) async {
+    // プロフィール表示の初期データ取得。
     final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/users/$userId');
     final response = await _client.get(uri);
     _ensureSuccess(response, endpoint: uri.toString());
@@ -22,6 +28,7 @@ class ProfileRemoteDatasourceImpl implements ProfileRemoteDataSource {
 
   @override
   Future<UserModel> updateProfile(UserModel user) async {
+    // 編集後プロフィールをサーバーへ保存し、確定値を受け取る。
     final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/users/${user.id}');
     final response = await _client.put(
       uri,
@@ -37,6 +44,7 @@ class ProfileRemoteDatasourceImpl implements ProfileRemoteDataSource {
 
   @override
   Future<String> uploadImage(String filePath) async {
+    // 現状はサーバーでURL発行のみ（実ファイルアップロードは将来拡張）。
     final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/uploads/profile-image');
     final response = await _client.post(
       uri,

@@ -11,6 +11,9 @@ final googleSignInProvider = Provider<GoogleSignIn>((_) {
 });
 
 /// AuthRepository をDIで構成する。
+/// - SDK依存(GoogleSignIn)
+/// - API依存(AuthRemoteDataSource)
+/// をここで組み立て、UI層へは抽象(AuthRepository)のみ露出する。
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   final googleSignIn = ref.watch(googleSignInProvider);
   final remote = ref.watch(authRemoteDataSourceProvider);

@@ -54,6 +54,8 @@ async def seed_initial_data(session: AsyncSession) -> None:
         ChatGroupMember(group_id="project_group_001", user_id="member-01"),
     ]
 
+    # 開発初期の動作確認用に最小限データを投入。
+    # 本番ではここを使わず、管理画面や運用バッチでマスタを登録する。
     session.add_all(users)
     session.add_all(groups)
     session.add_all(members)

@@ -5,6 +5,12 @@ import 'package:group_chat_app/features/auth/di/google_login_usecase_provider.da
 import 'package:group_chat_app/features/auth/presentation/widgets/google_sign_in_button.dart';
 import 'package:group_chat_app/ui/youtube_like_bottom_navigation_bar.dart';
 
+/// ログイン画面。
+///
+/// 責務:
+/// - ログイン操作の受付
+/// - ローディング/エラーの表示
+/// - 成功時にセッション保存してホームへ遷移
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
@@ -32,8 +38,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     final useCase = ref.read(googleLoginUseCaseProvider);
     try {
+      // UseCase呼び出し。ここでGoogle認証 + API同期が実行される。
       final user = await useCase.signIn();
       if (user == null) return;
+      // 全タブ共通で参照する認証セッションを更新。
       ref.read(authSessionProvider.notifier).state = user;
       if (!mounted) return;
       _toYoutubeLikeBottomNavigationBarPage();

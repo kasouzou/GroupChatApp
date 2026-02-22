@@ -10,6 +10,7 @@ part 'profile_notifier.g.dart';
 
 @Riverpod(keepAlive: true) // Providerを破棄しない（必要ならautoDisposeを外す）
 class ProfileNotifier extends _$ProfileNotifier {
+  // 初回ロード重複を防ぐガード。
   bool _loaded = false;
 
   @override
@@ -20,6 +21,7 @@ class ProfileNotifier extends _$ProfileNotifier {
 
   /// UI から明示的に呼ぶ。ProfilePage の initState で呼ぶ想定
   Future<void> loadUser(String userId) async {
+    // 画面再表示などで同一ロードが連発しないようにする。
     if (_loaded) return;
     _loaded = true;
 
@@ -84,6 +86,7 @@ class ProfileNotifier extends _$ProfileNotifier {
     final useCase = ref.read(profileUseCaseProvider);
 
     try {
+      // 画像アップロード・プロフィール更新はUseCaseに集約。
       final updatedUser = await useCase.saveProfile(
         originalUser: original,
         editingName: editingName,

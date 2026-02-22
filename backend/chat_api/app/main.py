@@ -14,6 +14,7 @@ from app.settings import settings
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     # 起動時にテーブル作成と初期データ投入を実施
+    # 開発環境ではこれで最小起動可能。本番ではmigrationツール(Alembic)へ移行推奨。
     await init_database(engine)
     async with SessionLocal() as session:
         await seed_initial_data(session)
@@ -21,6 +22,9 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title=settings.app_name, version="1.0.0", lifespan=lifespan)
+# ルーター登録順:
+# - auth/profile/group/chat の順で機能別に分割
+# - 依存はDBセッション注入(get_db)で統一
 app.include_router(auth_router)
 app.include_router(chat_router)
 app.include_router(group_router)

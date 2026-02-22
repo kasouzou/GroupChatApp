@@ -7,6 +7,12 @@ import 'package:group_chat_app/features/auth/di/auth_session_provider.dart';
 import 'package:group_chat_app/features/auth/presentation/pages/login_page.dart';
 import 'package:group_chat_app/ui/youtube_like_bottom_navigation_bar.dart'; // SystemChromeを使うために必要
 
+/// 起動画面。
+///
+/// フロー:
+/// 1. スプラッシュ表示
+/// 2. Google軽量認証(サイレント復元)を試行
+/// 3. 成功なら authSession を復元しホームへ、失敗ならログイン画面へ
 class SplashScreenPage extends ConsumerStatefulWidget {
   const SplashScreenPage({super.key});
 
@@ -30,6 +36,7 @@ class _SplashScreenState extends ConsumerState<SplashScreenPage> {
     await Future.delayed(const Duration(seconds: 4));
 
     // 既存セッションのサイレント復元を試行。
+    // ここで失敗してもログイン画面へフォールバックする設計。
     final googleSignIn = ref.read(googleSignInProvider);
     final remote = ref.read(authRemoteDataSourceProvider);
 
