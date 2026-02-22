@@ -1,24 +1,49 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:group_chat_app/features/auth/di/auth_session_provider.dart';
+import 'package:group_chat_app/features/new_chat/di/create_group_invite_usecase_provider.dart';
+import 'package:group_chat_app/features/new_chat/di/join_group_by_invite_usecase_provider.dart';
+import 'package:group_chat_app/features/new_chat/domain/entities/group_invite_info.dart';
 import 'package:group_chat_app/shared/widgets/show_discard_dialog.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:url_launcher/url_launcher.dart'; // ★ URLを開くために追加
 
-class AddMemberPage extends StatefulWidget {
-  const AddMemberPage({super.key});
+class AddMemberPage extends ConsumerStatefulWidget {
+  final String? groupId;
+
+  const AddMemberPage({super.key, this.groupId});
 
   @override
-  State<AddMemberPage> createState() => _AddMemberPageState();
+  ConsumerState<AddMemberPage> createState() => _AddMemberPageState();
 }
 
-class _AddMemberPageState extends State<AddMemberPage> {
-  // ★ 独自変数：デモ用招待コード
-  final String _inviteCode = "123-456";
-  // ★ 独自変数：スキャン用のデータ（ディズニーランドのURL）
-  final String _qrData = "https://www.tokyodisneyresort.jp/tdl/";
-
-  // ★ 状態管理変数：連続スキャンを防ぐためのフラグ
+class _AddMemberPageState extends ConsumerState<AddMemberPage> {
+  // 連続スキャン/多重実行の防止フラグ
   bool _isProcessing = false;
+  GroupInviteInfo? _inviteInfo;
+  late final TextEditingController _groupIdController;
+
+  @override
+  void initState() {
+    super.initState();
+    _groupIdController = TextEditingController(
+      text:
+          widget.groupId ??
+          const String.fromEnvironment(
+            'DEFAULT_GROUP_ID',
+            defaultValue: 'family_group_001',
+          ),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshInvite();
+    });
+  }
+
+  @override
+  void dispose() {
+    _groupIdController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +58,7 @@ class _AddMemberPageState extends State<AddMemberPage> {
               if (shouldDiscard != true) {
                 return;
               }
-              debugPrint('×ボタンが押されました。編集を破棄して戻ります。(メンバー追加画面)');
+              if (!mounted) return;
               Navigator.pop(context, 'cancel');
             },
           ),
@@ -50,34 +75,31 @@ class _AddMemberPageState extends State<AddMemberPage> {
           ),
         ),
         body: TabBarView(
-          physics: const NeverScrollableScrollPhysics(), // スキャン中の誤操作防止
+          physics: const NeverScrollableScrollPhysics(),
           children: [_buildScannerTab(), _buildInviteTab()],
         ),
       ),
     );
   }
 
-  // --- タブ1：スキャン画面 ---
+  // --- タブ1：スキャン画面（招待コード参加） ---
   Widget _buildScannerTab() {
     return Stack(
       children: [
         MobileScanner(
           onDetect: (capture) {
-            // ★ フラグチェック：処理中なら何もしない（ガード節）
             if (_isProcessing) return;
 
-            final List<Barcode> barcodes = capture.barcodes;
+            final barcodes = capture.barcodes;
             for (final barcode in barcodes) {
-              final String? code = barcode.rawValue;
-              if (code != null) {
-                debugPrint('QRコードを検知: $code');
-                _handleJoinGroup(code); // 処理開始
-                break; // 1つ見つけたらループを抜ける
+              final raw = barcode.rawValue;
+              if (raw != null && raw.isNotEmpty) {
+                _handleJoinGroup(raw);
+                break;
               }
             }
           },
         ),
-        // スキャン枠のデザイン
         Center(
           child: Container(
             width: 250,
@@ -88,18 +110,15 @@ class _AddMemberPageState extends State<AddMemberPage> {
             ),
           ),
         ),
-        // 処理中のインジケーター（ロード中なら出す）
         if (_isProcessing)
           const Center(child: CircularProgressIndicator(color: Colors.white)),
-
-        // 手入力への逃げ道
         Positioned(
           bottom: 40,
           left: 0,
           right: 0,
           child: Center(
             child: ElevatedButton.icon(
-              onPressed: _isProcessing ? null : () => _showManualEntryDialog(),
+              onPressed: _isProcessing ? null : _showManualEntryDialog,
               icon: const Icon(Icons.keyboard),
               label: const Text('招待コードを手入力する'),
               style: ElevatedButton.styleFrom(
@@ -115,80 +134,99 @@ class _AddMemberPageState extends State<AddMemberPage> {
     );
   }
 
-  // --- タブ2：招待画面（親がQRを見せる想定） ---
+  // --- タブ2：招待画面（招待コード発行） ---
   Widget _buildInviteTab() {
+    final inviteCode = _inviteInfo?.inviteCode ?? '----';
+    final qrData = _inviteInfo?.inviteUrl ?? 'INVITE_NOT_READY';
+    final expiresAt = _inviteInfo?.expiresAt;
+
     return SingleChildScrollView(
-      // ★ 追加：これで縦方向の溢れを解消
-      padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 40.0),
+      padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 24.0),
       child: Center(
-        // ★ 中央寄せを維持するために追加
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            TextField(
+              controller: _groupIdController,
+              decoration: const InputDecoration(
+                labelText: '招待対象のGroupId',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isProcessing ? null : _refreshInvite,
+                icon: const Icon(Icons.refresh),
+                label: const Text('招待コードを再生成'),
+              ),
+            ),
+            const SizedBox(height: 20),
             const Text(
               'このQRコードを\nスキャンしてもらってね',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 30),
-
-            // 組み込みウィジェット：QRコード
+            const SizedBox(height: 20),
             QrImageView(
-              data: _qrData,
+              data: qrData,
               version: QrVersions.auto,
               size: 250.0,
               backgroundColor: Colors.white,
             ),
-
-            const SizedBox(height: 40),
+            const SizedBox(height: 24),
             const Divider(),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
             const Text('または、この番号を教えてね：', style: TextStyle(color: Colors.grey)),
-            const SizedBox(height: 10),
-
-            // 招待コードを大きく表示
+            const SizedBox(height: 8),
             Text(
-              _inviteCode,
+              inviteCode,
               style: const TextStyle(
-                fontSize: 48,
-                letterSpacing: 8,
+                fontSize: 36,
+                letterSpacing: 4,
                 fontWeight: FontWeight.bold,
                 color: Colors.blueAccent,
               ),
+              textAlign: TextAlign.center,
             ),
-
-            const SizedBox(height: 10),
-            const Text(
-              '※ 5分間だけ有効です',
-              style: TextStyle(color: Colors.redAccent, fontSize: 12),
+            const SizedBox(height: 8),
+            Text(
+              expiresAt == null
+                  ? '有効期限を取得中...'
+                  : '有効期限: ${expiresAt.toLocal()}',
+              style: const TextStyle(color: Colors.redAccent, fontSize: 12),
             ),
-
-            // ★ マクロな視点：スクロール可能になったので、下に余白を追加
-            const SizedBox(height: 40),
+            const SizedBox(height: 20),
           ],
         ),
       ),
     );
   }
 
-  // --- ロジック：手入力ダイアログ ---
   void _showManualEntryDialog() {
+    final controller = TextEditingController();
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('コード入力'),
-        content: const TextField(
+        content: TextField(
+          controller: controller,
           autofocus: true,
-          keyboardType: TextInputType.number,
-          decoration: InputDecoration(hintText: '6桁の番号を入力'),
+          keyboardType: TextInputType.text,
+          decoration: const InputDecoration(hintText: '招待コードを入力'),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('キャンセル'),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              _handleJoinGroup(controller.text.trim());
+            },
             child: const Text('参加する'),
           ),
         ],
@@ -196,64 +234,85 @@ class _AddMemberPageState extends State<AddMemberPage> {
     );
   }
 
-  // --- ★ ロジック：URLを開く処理（非同期） ---
-  Future<void> _handleJoinGroup(String data) async {
-    // 1. まずフラグを立てて、連続スキャンをブロックする
-    setState(() {
-      _isProcessing = true;
-    });
-
-    try {
-      final Uri url = Uri.parse(data);
-
-      // 2. ユーザーに確認ダイアログを出す（セキュリティ配慮）
-      // いきなりブラウザが開くとびっくりするし、悪意あるサイトへの誘導を防ぐため
-      if (!mounted) return;
-      final bool? shouldOpen = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('ページを開きますか？'),
-          content: Text('以下のURLをブラウザで開きます。\n$data'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('キャンセル'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('開く'),
-            ),
-          ],
-        ),
-      );
-
-      // 3. 「開く」が押されたら実際にブラウザを起動
-      if (shouldOpen == true) {
-        if (await canLaunchUrl(url)) {
-          await launchUrl(
-            url,
-            mode: LaunchMode.externalApplication, // アプリ内ではなく、Chrome/Safariで開く
-          );
-        } else {
-          throw 'URLを開けませんでした: $url';
-        }
-      }
-    } catch (e) {
-      debugPrint('エラー発生: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('無効なQRコード、またはURLを開けませんでした')),
-        );
-      }
-    } finally {
-      // 4. 処理が終わったら（またはキャンセルしたら）少し待ってからフラグを戻す
-      // すぐに戻すと、まだカメラにQRが映っていて再検知しちゃうから
-      await Future.delayed(const Duration(seconds: 2));
-      if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
-      }
+  Future<void> _refreshInvite() async {
+    final groupId = _groupIdController.text.trim();
+    if (groupId.isEmpty) {
+      _showSnack('GroupIdを入力してください');
+      return;
     }
+
+    final currentUser = ref.read(authSessionProvider);
+    const fallbackUserId = String.fromEnvironment(
+      'CHAT_USER_ID',
+      defaultValue: 'user-001',
+    );
+    final userId = currentUser?.id ?? fallbackUserId;
+
+    setState(() => _isProcessing = true);
+    try {
+      final useCase = ref.read(createGroupInviteUseCaseProvider);
+      final info = await useCase.call(
+        groupId: groupId,
+        requesterUserId: userId,
+        expiresInMinutes: 5,
+      );
+      if (!mounted) return;
+      setState(() => _inviteInfo = info);
+      _showSnack('招待コードを発行しました');
+    } catch (e) {
+      _showSnack('招待コード発行に失敗: $e');
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
+  Future<void> _handleJoinGroup(String rawData) async {
+    final inviteCode = _extractInviteCode(rawData);
+    if (inviteCode.isEmpty) {
+      _showSnack('招待コードの形式が不正です');
+      return;
+    }
+
+    final currentUser = ref.read(authSessionProvider);
+    const fallbackUserId = String.fromEnvironment(
+      'CHAT_USER_ID',
+      defaultValue: 'user-001',
+    );
+    final userId = currentUser?.id ?? fallbackUserId;
+
+    setState(() => _isProcessing = true);
+    try {
+      final useCase = ref.read(joinGroupByInviteUseCaseProvider);
+      final result = await useCase.call(inviteCode: inviteCode, userId: userId);
+      if (!mounted) return;
+      _showSnack('参加成功: ${result.groupName}');
+      Navigator.pop(context, result.groupId);
+    } catch (e) {
+      _showSnack('参加に失敗しました: $e');
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+  }
+
+  String _extractInviteCode(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return '';
+
+    // URL形式: https://host/invite/INV-XXXX
+    final inviteIndex = trimmed.lastIndexOf('/invite/');
+    if (inviteIndex >= 0) {
+      final code = trimmed.substring(inviteIndex + '/invite/'.length).trim();
+      return code.toUpperCase();
+    }
+
+    // 生コード形式
+    return trimmed.toUpperCase();
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }

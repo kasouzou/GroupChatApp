@@ -40,10 +40,11 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       'CHAT_USER_ID',
       defaultValue: 'user-001',
     );
-    _myGoogleUid = widget.currentUserId ?? sessionUser?.id ?? fallbackUserId;
+    _myGoogleUid = widget.currentUserId ?? sessionUser?.id ?? fallbackUserId;// widget.currentUserId → 画面遷移時に渡されたユーザーID（優先度1） sessionUser?.id → 認証セッションから取得したユーザーID（優先度2） fallbackUserId → 環境変数から取得したユーザーID（優先度3、どれもなければ 'user-001'）どれも可用性（堅牢性）のためです。記事→https://www.notion.so/2026-1-28-2f68b8225642805a9a82c15189ab7826?source=copy_link#30f8b82256428035b574c5deeebe72c4
     _currentGroupId = widget.groupId;
 
     // 送信処理が参照する状態をNotifierへ反映。
+    // 「今のフレームの描画（ビルド）が全部終わった直後に、1回だけこの処理をやってね！」というFlutterの仕組みを利用して、initState内でref.readする形にしています。
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref
           .read(chatNotifierProvider.notifier)

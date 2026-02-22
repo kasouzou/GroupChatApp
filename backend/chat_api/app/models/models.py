@@ -59,6 +59,27 @@ class ChatGroupMember(Base):
     user_id: Mapped[str] = mapped_column(String(128), nullable=False)
 
 
+class ChatGroupInvite(Base):
+    # グループ招待コード
+    __tablename__ = "chat_group_invites"
+    __table_args__ = (
+        UniqueConstraint("invite_code", name="uq_chat_group_invite_code"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    group_id: Mapped[str] = mapped_column(ForeignKey("chat_groups.id", ondelete="CASCADE"), nullable=False)
+    invite_code: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_by_user_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    consumed_by_user_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class ChatMessage(Base):
     # リモート保存されるメッセージ本体
     __tablename__ = "chat_messages_remote"

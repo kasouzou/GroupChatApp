@@ -6,7 +6,15 @@ import 'package:group_chat_app/features/chat/domain/entities/chat_group_summary.
 import 'package:group_chat_app/features/chat/presentation/pages/chat_page.dart';
 
 /// 自分が参加しているチャット一覧画面。
-/// groupId/groupName を表示し、選択したグループへ遷移する。
+///
+/// 概要:
+/// - UseCase の `watchMyChats()` でチャット一覧ストリームを購読して UI を描画する。
+/// - 検索 / ソートは画面側で行い、カードタップで `ChatPage` へ `groupId` と
+///   `groupName` を渡して遷移する。
+///
+/// 重要な責務の分離:
+/// - UseCase: データ取得 (DI 経由で注入される `fetchMyChatsUseCaseProvider`)
+/// - View: 検索・ソート・カード描画・画面遷移のみ担当
 class MyChatsPage extends ConsumerStatefulWidget {
   const MyChatsPage({super.key});
 
@@ -17,6 +25,9 @@ class MyChatsPage extends ConsumerStatefulWidget {
 class _MyChatsPageState extends ConsumerState<MyChatsPage> {
   final TextEditingController _searchController = TextEditingController();
   int _selectedSortIndex = 0;
+
+  // `_searchController` は画面上の検索バー内のテキストを保持する。
+  // `_selectedSortIndex` は表示順序(未読順/最新順/人気順)を保持する。
 
   @override
   void dispose() {
@@ -42,6 +53,8 @@ class _MyChatsPageState extends ConsumerState<MyChatsPage> {
           bottom: false,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            // StreamBuilder は UseCase が返すチャット一覧ストリームを購読する。
+            // snapshot.data は `List<ChatGroupSummary>` を期待する。
             child: StreamBuilder<List<ChatGroupSummary>>(
               stream: useCase.watchMyChats(),
               builder: (context, snapshot) {
@@ -49,6 +62,8 @@ class _MyChatsPageState extends ConsumerState<MyChatsPage> {
                   return const Center(child: CircularProgressIndicator());
                 }
 
+                // ストリームから受け取った生データに対して
+                // 検索・ソート処理を適用して表示用リストを作る。
                 final chats = _applySearchAndSort(snapshot.data ?? const []);
 
                 return CustomScrollView(
@@ -101,14 +116,19 @@ class _MyChatsPageState extends ConsumerState<MyChatsPage> {
                     else
                       SliverList(
                         delegate: SliverChildBuilderDelegate((context, index) {
+                          // 各要素は `ChatGroupSummary` から取り出す。
                           final chat = chats[index];
                           return MyChatCard(
                             groupName: chat.groupName,
                             groupId: chat.groupId,
                             lastMessagePreview: chat.lastMessagePreview,
+                            // 相対時刻を表示用に整形して渡す
                             elapsed: _formatElapsed(chat.lastMessageAt),
                             memberCount: chat.memberCount,
                             unreadCount: chat.unreadCount,
+                            // カードタップ時の遷移処理:
+                            // `ChatPage` に必要な `groupId` と `groupName` を
+                            // 引数として渡して `push` する。
                             onMyChatCardTap: () async {
                               await Navigator.of(
                                 context,
@@ -154,6 +174,7 @@ class _MyChatsPageState extends ConsumerState<MyChatsPage> {
           chat.lastMessagePreview.toLowerCase().contains(keyword);
     }).toList();
 
+    // 選択されているソートタブに応じてソート順を決める
     switch (_selectedSortIndex) {
       case 0:
         filtered.sort((a, b) {
@@ -190,6 +211,7 @@ class _MyChatsPageState extends ConsumerState<MyChatsPage> {
             _selectedSortIndex = index;
           });
         },
+        // タブの見た目をアニメーションで切り替える
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 8),
@@ -269,6 +291,7 @@ class MyChatCard extends StatelessWidget {
       child: InkWell(
         onTap: onMyChatCardTap,
         borderRadius: BorderRadius.circular(24),
+        // カード全体をタップ可能にして、押下で `onMyChatCardTap` を呼ぶ
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(

@@ -50,7 +50,7 @@ class _SplashScreenState extends ConsumerState<SplashScreenPage> {
           displayName: account.displayName ?? 'NoName',
           photoUrl: account.photoUrl ?? '',
         );
-        ref.read(authSessionProvider.notifier).state = user;// .stateってそもそも何？→https://www.notion.so/state-30f8b822564280558618e8ce773858eb?showMoveTo=true&saveParent=true
+        ref.read(authSessionProvider.notifier).state = user;// .stateってそもそも何？このファイルのコードを例に解説。→https://www.notion.so/state-30f8b822564280558618e8ce773858eb?showMoveTo=true&saveParent=true
       }
     } catch (_) {
       // サイレント復元失敗時はログイン画面へフォールバック

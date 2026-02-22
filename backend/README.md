@@ -33,6 +33,10 @@ flutter run \
   - 画像アップロードURL発行（現状はダミーURL返却）
 - `POST /api/v1/groups`
   - NewChatのグループ作成
+- `POST /api/v1/group-invites`
+  - 招待コード発行（AddMember: 招待する）
+- `POST /api/v1/group-invites/join`
+  - 招待コードでグループ参加（AddMember: 招待を受ける）
 - `GET /api/v1/users/{user_id}/groups`
   - Chat一覧（所属グループ）取得
 - `GET /api/v1/groups/{group_id}/messages`

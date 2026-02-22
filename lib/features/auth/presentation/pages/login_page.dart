@@ -33,7 +33,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   Future<void> _handleSignIn() async {
-    if (_isSigningIn) return;
+    if (_isSigningIn) return;// 条件が true のとき → return を実行して関数終了条件が false のとき → return は実行されず、次の処理へ進む
     setState(() => _isSigningIn = true);
 
     final useCase = ref.read(googleLoginUseCaseProvider);
@@ -84,3 +84,20 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 }
+
+// 処理フロー
+// ログイン画面表示
+//     ↓
+// Googleサインインボタン表示
+//     ↓
+// ユーザーがボタンをタップ
+//     ├─ _handleSignIn() 実行
+//     │   ├─ _isSigningIn = true（連続送信防止）
+//     │   ├─ googleLoginUseCaseProvider から UseCase取得
+//     │   ├─ useCase.signIn() 実行
+//     │   │   └─ Googleでログイン → RemoteDataSourceでバックエンド認証
+//     │   ├─ user != null → authSessionProvider に保存
+//     │   └─ _isSigningIn = false
+//     │
+//     └─ ログイン成功 → YoutubeLikeBottomNavigationBar へ
+//        ログイン失敗 → SnackBar でエラー表示

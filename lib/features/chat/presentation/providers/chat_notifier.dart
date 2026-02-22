@@ -78,7 +78,7 @@ class ChatNotifier extends _$ChatNotifier {
     required String currentUserId,
     required String currentUserRole,
   }) {
-    state = state.copyWith(
+    state = state.copyWith(// この「state」とは何でしょうか？ 根本から理解したいです。→https://www.notion.so/2026-1-28-2f68b8225642805a9a82c15189ab7826?source=copy_link#30f8b8225642800f8fd0e0ec92db6be5
       groupId: groupId,
       currentUserId: currentUserId,
       currentUserRole: currentUserRole,
