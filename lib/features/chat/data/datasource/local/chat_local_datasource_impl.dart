@@ -28,6 +28,12 @@ class ChatLocalDataSourceImpl {
     return rows.map(_fromRow).toList();
   }
 
+  /// ローカルDB上の全メッセージを取得する（初期同期用）。
+  Future<List<ChatMessageModel>> getAllMessages() async {
+    final rows = await _dao.getAllMessages();
+    return rows.map(_fromRow).toList();
+  }
+
   Map<String, dynamic> _toRow(ChatMessageModel message) {
     return {
       'id': message.serverId,

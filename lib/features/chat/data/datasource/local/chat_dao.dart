@@ -38,6 +38,15 @@ class ChatDao {
     );
   }
 
+  // 💡 2-2. ローカルにある全メッセージを取得
+  // 一覧の初期表示（Repositoryのウォームアップ）に使う。
+  Future<List<Map<String, dynamic>>> getAllMessages() async {
+    return await _db.query(
+      'chat_messages',
+      orderBy: 'created_at ASC',
+    );
+  }
+
   // 💡 3. 同期成功後にステータスを更新
   // サーバーから発行された UUID (id) を保存し、sync_status を 1 (送信済) に書き換える。
   Future<void> updateSyncStatus(int localId, String serverId) async {

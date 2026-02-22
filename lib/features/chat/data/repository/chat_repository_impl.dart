@@ -27,13 +27,14 @@ class ChatRepositoryImpl implements ChatRepository {
     'friends_group_001': '友だちグループ',
     'project_group_001': 'プロジェクトA',
   };
-  
+
   // local の更新通知を受け取る購読。
   StreamSubscription<ChatMessageModel>? _localSubscription;
+  // 初回のローカルキャッシュ取り込み（1回だけ実行）
+  Future<void>? _hydrateFuture;
 
   ChatRepositoryImpl({this.local}) {
-    // 一覧画面で空表示にならないよう、初回のモックグループを投入。
-    _seedMockGroups();
+    _startHydrationIfNeeded();
     // local 側で保存されたメッセージを repository 側のメモリにも反映する。
     _localSubscription = local?.watchMessages().listen(_upsertAndBroadcast);
   }
@@ -56,9 +57,10 @@ class ChatRepositoryImpl implements ChatRepository {
       () => StreamController<List<ChatMessageModel>>.broadcast(),
     );
 
-    // 初回監視時は模擬履歴を投入（要件: 足りないデータは mock 可）。
-    _messagesByGroup.putIfAbsent(groupId, () => _mockInitialMessages(groupId));
+    // 初回監視時に空箱だけ作成。中身は初期ハイドレーション/増分で埋まる。
+    _messagesByGroup.putIfAbsent(groupId, () => <ChatMessageModel>[]);
     _ensureGroupMetadata(groupId);
+    _startHydrationIfNeeded();
     // リスナー接続完了後に現在値を流す。
     Timer.run(() => controller.add(List.unmodifiable(_messagesByGroup[groupId]!)));
     return controller.stream;
@@ -66,6 +68,7 @@ class ChatRepositoryImpl implements ChatRepository {
 
   @override
   Stream<List<ChatGroupSummary>> watchMyChats() {
+    _startHydrationIfNeeded();
     // 監視開始直後に最新サマリーを即配信。
     Timer.run(_emitChatSummaries);
     return _myChatsController.stream;
@@ -203,5 +206,54 @@ class ChatRepositoryImpl implements ChatRepository {
       TextContent(:final text) => text,
       ImageContent(:final fileName) => '[画像] $fileName',
     };
+  }
+
+  void _startHydrationIfNeeded() {
+    _hydrateFuture ??= _hydrateFromLocalCache();
+  }
+
+  Future<void> _hydrateFromLocalCache() async {
+    // 将来は remote endpoint からの初期同期もここに統合する。
+    if (local == null) {
+      _seedMockGroups();
+      _emitChatSummaries();
+      _broadcastAllGroups();
+      return;
+    }
+
+    final localMessages = await local!.getAllMessages();
+    if (localMessages.isEmpty) {
+      // 開発中はデータ0件時にモックでUI確認可能にする。
+      _seedMockGroups();
+      _emitChatSummaries();
+      _broadcastAllGroups();
+      return;
+    }
+
+    _messagesByGroup.clear();
+    for (final message in localMessages) {
+      final bucket = _messagesByGroup.putIfAbsent(
+        message.groupId,
+        () => <ChatMessageModel>[],
+      );
+      bucket.add(message);
+      _ensureGroupMetadata(message.groupId);
+    }
+
+    for (final messages in _messagesByGroup.values) {
+      messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    }
+
+    _emitChatSummaries();
+    _broadcastAllGroups();
+  }
+
+  void _broadcastAllGroups() {
+    for (final entry in _watchControllers.entries) {
+      final controller = entry.value;
+      if (controller.isClosed) continue;
+      final messages = _messagesByGroup[entry.key] ?? const <ChatMessageModel>[];
+      controller.add(List.unmodifiable(messages));
+    }
   }
 }
