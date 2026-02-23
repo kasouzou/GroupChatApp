@@ -209,6 +209,295 @@ DI の挙動（具体例）:
 ---
 このファイルは `lib/features/new_chat` の実装を読みながら補完・更新してください。実装側で変更が入ったら、ここに手順やファイル参照を追記して最新化することを推奨します。
 
+## バックエンドを含めたデータフロー（詳細）
+以下はフロントエンド（Flutter）からバックエンド（FastAPI）を横断する、実際に発生するHTTPリクエスト、サーバー側の処理、DB への書き込み、そしてクライアント側での結果受け取りまでを時系列に追った詳細設計です。ファイル/関数名は実装の参照先を併記しています。
+
+### A. 新規チャット作成フロー（Create Group）
+
+概要: ユーザーが `MakeChatPage` でチャット名等を入力して「保存」を押すと、フロントエンドは `CreateChatUsecase` 経由で `NewChatRepository` を呼び出し、最終的に `POST /api/v1/groups` に対して HTTP リクエストが発行され、新しい `ChatGroup` が DB に作成される。
+
+#### フロント（呼び出し順）
+
+- `MakeChatPage._onSavePressed` — [lib/features/new_chat/presentation/pages/make_chat_page.dart](lib/features/new_chat/presentation/pages/make_chat_page.dart)
+  - 1) 入力検証（非空など）
+  - 2) `usecase.call(name, creatorUserId, memberUserIds)` を await
+  - 3) 成功時: `Navigator.pop(context, groupId)` で呼び出し元へ戻す
+  - 4) 失敗時: Snackbar でエラーメッセージ表示
+
+- `CreateChatUsecase.call` — [lib/features/new_chat/application/create_chat_usecase.dart](lib/features/new_chat/application/create_chat_usecase.dart)
+  - 役割: パラメータの受け渡し。追加の業務ルール（例えばメンバー最大数）をここでチェックしても良い。
+
+- `NewChatRepositoryImpl.createChat` — [lib/features/new_chat/data/new_chat_repository_impl.dart](lib/features/new_chat/data/new_chat_repository_impl.dart)
+  - 役割: `remote.createGroup(...)` を呼び、戻り `group_id` をそのまま返す（現実装）
+
+- `NewChatRemoteDataSourceImpl.createGroup` — [lib/features/new_chat/data/datasource/remote/new_chat_remote_datasource_impl.dart](lib/features/new_chat/data/datasource/remote/new_chat_remote_datasource_impl.dart)
+  - HTTP リクエスト:
+    - メソッド: POST
+    - URL: `${ApiConfig.baseUrl}/api/v1/groups`
+    - ヘッダ: `Content-Type: application/json`, Authorization は `AuthHttpClient` が付与
+    - ボディ例:
+      ```json
+      {
+        "name": "チームA",
+        "creator_user_id": "user_123",
+        "member_user_ids": ["user_123", "user_456"]
+      }
+      ```
+  - 正常レスポンス期待値 (2xx): JSON 例 `{ "group_id": "grp_abc123...", "group_name": "チームA" }`
+  - HTTP エラー: ステータスコード非2xx は `toAppException(response, endpoint)` を通じて `AppException` に変換される。
+
+#### サーバー側（FastAPI）
+
+- ルータ: `create_group` — [backend/chat_api/app/api/group_router.py](backend/chat_api/app/api/group_router.py)
+  - 入力スキーマ: `CreateGroupRequest`（`creator_user_id`, `name`, `member_user_ids`）
+  - 主な処理:
+    1. 認証済みユーザー（`auth_user`）の ID と `creator_user_id` が一致するか検証。異なれば 403 を返す。
+    2. `AppUser` テーブルに `creator_user_id` が存在することを確認（404）。
+    3. `group_id` をサーバー側で採番（例: `grp_${uuid4().hex[:12]}`）し、`ChatGroup` を作成して `db.add(group)`。
+    4. メンバーリスト（作成者を含めた集合）を生成し、既存の `AppUser` のみ `ChatGroupMember` に追加する（自動作成は行わない実装）。
+    5. `await db.commit()` でコミット（ここでトランザクションが確定）。
+    6. 成功レスポンス: `CreateGroupResponse(group_id=..., group_name=...)`
+
+#### DB（重要な書き込み）
+
+- `chat_groups` テーブルに1行追加（[backend/chat_api/app/models/models.py](backend/chat_api/app/models/models.py) `ChatGroup` クラス）
+  - カラム: `id` (PRIMARY KEY), `name`, `creator_user_id`, `created_at`
+  - 実装例: `group_id = f"grp_{uuid4().hex[:12]}"`
+
+- `chat_group_members` テーブルに N 行追加
+  - カラム: `id` (AUTOINCREMENT), `group_id` (FK), `user_id`
+  - ユニーク制約: `uq_chat_group_member` (group_id, user_id)
+
+#### 戻り値とフロント側での扱い
+
+- DataSource は `group_id` を受け取り Repository が返し、UseCase が UI に返す（`String groupId`）
+- UI は `groupId` を使って初期画面遷移やローカルキャッシュ更新を行う
+
+#### 失敗ケースと対処
+
+- **403** (creator mismatch): フロントは再ログインや権限エラーのダイアログを表示
+- **404** (creator not found): 未登録ユーザーエラー。UI は詳細を示し、サポート誘導
+- **ネットワーク/タイムアウト**: リトライ or ユーザーに再試行を促す
+- **DB 制約違反**（例: ユニーク制約）: バックエンドで 409 を返す実装推奨。フロントは競合メッセージ表示。
+
+#### 注意点（運用／改善）
+
+- 同時作成やID重複を避けるためサーバ側で固有 ID を採番している。クライアント側では冪等性トークンを導入すると安全。
+- グループ名の重複許容 or 不許容のポリシー決定とそのサーバチェック
+
+---
+
+### B. 新規ユーザー招待フロー（招待発行：発行者側）
+
+概要: 発行者が `AddMemberPage` などから「招待リンクを生成」すると、フロントは `CreateGroupInviteUseCase` 経由で `POST /api/v1/group-invites` を呼び、サーバは招待テーブルにレコードを作成して `invite_code` と `invite_url` を返す。
+
+#### フロント（呼び出し順）
+
+- UI: `AddMemberPage` ボタン押下 → `createGroupInviteUseCase.call(groupId, requesterUserId, expiresInMinutes)`
+  - [lib/features/new_chat/application/create_group_invite_usecase.dart](lib/features/new_chat/application/create_group_invite_usecase.dart)
+- UseCase → Repository → DataSource の順で `remote.createInvite(...)` を呼び出す
+
+#### HTTP リクエスト（DataSource 層）
+
+- メソッド: POST
+- URL: `${ApiConfig.baseUrl}/api/v1/group-invites`
+- ボディ例:
+  ```json
+  {
+    "group_id": "grp_abc123",
+    "requester_user_id": "user_123",
+    "expires_in_minutes": 60
+  }
+  ```
+
+#### サーバー側（FastAPI）処理
+
+- ルータ: `create_group_invite` — [backend/chat_api/app/api/group_router.py](backend/chat_api/app/api/group_router.py)
+  1. `requester_user_id` と現在の `auth_user.id` を比較して一致を検証（403）。
+  2. `ChatGroup` 存在チェック（404）、`AppUser` 存在チェック（404）
+  3. 発行者がそのグループのメンバーであることを `ChatGroupMember` テーブルで確認（403）
+  4. 招待コード生成（`INV-${uuid4().hex[:10]}`）
+  5. `ChatGroupInvite` を作成し `db.add(invite)`、`await db.commit()` で永続化
+  6. `invite_url` を組み立てて `CreateInviteResponse` を返却（`expires_at` は ISO 文字列）
+
+#### DB 書き込み
+
+- `chat_group_invites` テーブルに1行追加 — [backend/chat_api/app/models/models.py](backend/chat_api/app/models/models.py) の `ChatGroupInvite`
+  - カラム: `id` (AUTOINCREMENT), `group_id` (FK), `invite_code`, `created_by_user_id`, `expires_at`, `created_at`, `consumed_by_user_id` (NULL), `consumed_at` (NULL)
+  - ユニーク制約: `uq_chat_group_invite_code` (invite_code)
+
+#### レスポンス例
+
+```json
+{
+  "group_id": "grp_abc123",
+  "invite_code": "INV-4F5A1C",
+  "invite_url": "http://localhost:8080/invite/INV-4F5A1C",
+  "expires_at": "2026-02-23T12:34:56+00:00"
+}
+```
+
+#### フロントでの扱い
+
+- `NewChatRepositoryImpl.createInvite` — [lib/features/new_chat/data/new_chat_repository_impl.dart](lib/features/new_chat/data/new_chat_repository_impl.dart)
+  - 受け取った JSON から `GroupInviteInfo` を生成して返す
+  - 実装上のポイント: `expires_at` は ISO 文字列→ `DateTime.tryParse` 変換し、失敗時は `DateTime.now()` にフォールバック
+
+- UI は `inviteUrl` を表示・コピー・共有シートに渡す
+
+#### 失敗ケースと注意
+
+- **403** (requester not group member): 発行権限がない旨を UI に表示
+- **404** (group/user not found): ユーザーまたはグループが存在しない
+- **競合**: `invite_code` は `uq_chat_group_invite_code` のユニーク制約があるため、ごく稀に生成衝突が起きる可能性あり。バックエンドで生成衝突を検出したら再生成ループを実装するか、DBトランザクションで失敗時に再試行する。
+
+#### セキュリティ上の考慮
+
+- 招待コードの長さと予測困難性を確保する。公開 URL に含めるため、短すぎると当たり判定されやすい。
+- 共有時のログと監査（誰がいつ発行したか）を `created_by_user_id` で追跡している。
+- 招待が漏洩した場合に備え、有効期限と消費制御（1回 or 多回）を設けることを検討する。
+
+---
+
+### C. 招待を使って参加するフロー（受け手側）
+
+概要: 受け手が `invite_code` を受け取りアプリ上で「参加」を選ぶと、フロントは `JoinGroupByInviteUseCase` を呼び、最終的に `POST /api/v1/group-invites/join` を呼んで参加処理を行う。
+
+#### フロント（呼び出し順）
+
+- `JoinGroupByInviteUseCase.call(inviteCode, userId)` を実行 — [lib/features/new_chat/application/join_group_by_invite_usecase.dart](lib/features/new_chat/application/join_group_by_invite_usecase.dart)
+- `NewChatRepositoryImpl.joinByInviteCode` が `remote.joinByInviteCode(inviteCode, userId)` を呼ぶ
+
+#### HTTP リクエスト（DataSource 層）
+
+- メソッド: POST
+- URL: `${ApiConfig.baseUrl}/api/v1/group-invites/join`
+- ボディ例:
+  ```json
+  { "invite_code": "INV-4F5A1C", "user_id": "user_789" }
+  ```
+
+#### サーバー側（FastAPI）処理
+
+- ルータ: `join_group_by_invite` — [backend/chat_api/app/api/group_router.py](backend/chat_api/app/api/group_router.py)
+  1. `payload.user_id` と `auth_user.id` を比較（403）
+  2. `ChatGroupInvite` を `invite_code` で検索。見つからなければ 404
+  3. 期限チェック (`invite.expires_at < now`) → 410（Gone）
+  4. 既に `consumed_at` がある場合は 409（Conflict）
+  5. 対象 `ChatGroup` の存在確認（404）
+  6. `AppUser` の存在確認（404）
+  7. 既に `ChatGroupMember` に登録済みか確認
+     - 未登録なら `ChatGroupMember` を `db.add(...)` して `joined = True`
+     - すでにメンバーなら `joined = False`（冪等性を維持）
+  8. `invite` の `consumed_by_user_id` と `consumed_at` をセットして `db.commit()`
+  9. レスポンス: `JoinByInviteResponse(group_id=..., group_name=..., joined=bool)`
+
+#### DB の状態変化
+
+- 参加成功で `chat_group_members` に行が追加される（`uq_chat_group_member` に注意）
+- `chat_group_invites` の `consumed_by_user_id` と `consumed_at` が更新される
+- 同一招待による複数参加は `consumed_at` が既に set されているため、409 で拒否される（1回限りの実装）
+
+#### 失敗ケースと UI 対応
+
+- **404** (invite not found): 「招待コードが無効です」と表示
+- **410** (expired): 「招待コードは期限切れです」と表示し再発行を促す
+- **409** (already consumed): 「すでに使われた招待です」と表示
+- **404** (user not found): ユーザー登録が完了していない場合はサインアップ促進
+
+#### 実運用での注意
+
+- 同時アクセス（複数端末が同じ invite を同時に消費しようとする場合）への対処は DB レベルのトランザクションとユニーク制約で担保しているが、409 をクライアントで受け取った場合の UX を設計しておくこと。
+- 参加処理の後にプッシュ通知やリアルタイムのメンバーリスト更新が必要なら、参加コミット直後にイベントを発行（例: メッセージキューや WebSocket 経由）する。
+- 複数回利用可能な招待への拡張を検討する場合は、`consumed_at` モデルから `usage_count` / `max_usage_count` モデルへの変更が必要。
+
+---
+
+## 具体的な HTTP レスポンス例（正常/エラー）
+
+### 正常系
+
+グループ作成 成功 (201 or 200):
+```json
+{
+  "group_id": "grp_abc123",
+  "group_name": "チームA"
+}
+```
+
+招待作成 成功 (201 or 200):
+```json
+{
+  "group_id": "grp_abc123",
+  "invite_code": "INV-4F5A1C",
+  "invite_url": "https://example.com/invite/INV-4F5A1C",
+  "expires_at": "2026-02-23T12:34:56+00:00"
+}
+```
+
+招待参加 成功 (200):
+```json
+{
+  "group_id": "grp_abc123",
+  "group_name": "チームA",
+  "joined": true
+}
+```
+
+### エラー系（バックエンドが返すHTTPステータスと想定レスポンス）
+
+```
+400: リクエスト不正（validation error）
+401/403: 認証/権限エラー（例: 未ログイン、別ユーザーによる操作）
+404: リソース未発見（group / user / invite not found）
+409: 競合（invite already consumed, unique constraint collision）
+410: 期限切れ（invite expired）
+5xx: サーバーエラー
+```
+
+クライアントでは `api_error_parser.toAppException` がレスポンス本文を parse して `AppException` を生成するため、フロントは `try/catch` で `AppException` を捕捉してメッセージを表示する実装が既存の方針。
+
+---
+
+## テスト／検証の観点
+
+### ユニットテスト
+
+- **UseCase**: モック Repository を注入して成功・失敗パスを検証
+  - `CreateChatUsecase`: パラメータ検証→ repo 呼び出しまで
+  - `CreateGroupInviteUseCase`: パラメータ→ repo 呼び出しまで
+  - `JoinGroupByInviteUseCase`: 形式チェック→ repo 呼び出しまで
+
+- **RepositoryImpl**: モック DataSource を注入して JSON マッピングを検証
+  - `NewChatRepositoryImpl.createChat`: group_id 抽出の正確性
+  - `NewChatRepositoryImpl.createInvite`: expires_at パース、GroupInviteInfo 構築
+  - `NewChatRepositoryImpl.joinByInviteCode`: JoinGroupResult 構築、エラーハンドリング
+
+- **DataSourceImpl**: HTTP クライアントをスタブしてステータスコード別の挙動を検証
+  - `NewChatRemoteDataSourceImpl.createGroup`: リクエストボディ構築、レスポンスパース、HTTP エラーマッピング
+
+### 統合テスト（Backend + DB + Front）
+
+- `backend/chat_api` をテスト用 DB（sqlite in-memory 等）で立ち上げ、実際に HTTP を投げて DB の変化を検証する
+- 招待のライフサイクル（作成→参加→既消費）を順にテスト
+- 並行処理テスト：複数ユーザーが同時にグループに参加する場合のユニーク制約と冪等性確認
+
+---
+
+## 参考：データベーススキーマ概要
+
+[backend/chat_api/app/models/models.py](backend/chat_api/app/models/models.py) の主要テーブル:
+
+- `AppUser`: ユーザーテーブル（`id`, `display_name`, `photo_url`, `created_at`, `updated_at`）
+- `ChatGroup`: グループテーブル（`id`, `name`, `creator_user_id`, `created_at`）
+- `ChatGroupMember`: グループメンバーシップテーブル（`id`, `group_id`, `user_id`, UC: `group_id+user_id`）
+- `ChatGroupInvite`: 招待テーブル（`id`, `group_id`, `invite_code`, `created_by_user_id`, `expires_at`, `created_at`, `consumed_by_user_id`, `consumed_at`, UC: `invite_code`）
+
+---
+
+このセクションは `backend/chat_api/app/api/group_router.py`、`backend/chat_api/app/models/models.py` の現在の実装に基づいています。実装が変わった場合は、ここにあるエンドポイント、レスポンス、DB スキーマとの整合性を再チェックして更新してください。
+
+
 ## 関数／行レベル注釈（実装参照）
 以下は実装ファイルを参照した上での、関数・メソッド単位の詳細な注釈です。各項目は責務、引数、戻り値、非同期・例外の振る舞い、実際に使用しているエンドポイントや JSON フィールド名などを含みます。
 
