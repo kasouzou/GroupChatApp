@@ -10,6 +10,8 @@ class UserResponse(BaseModel):
     photo_url: str
     created_at: datetime
     updated_at: datetime
+    # 認証成功直後のみ返すアクセストークン。通常のGET /usersでは空。
+    access_token: str | None = None
 
 
 class UpdateUserRequest(BaseModel):

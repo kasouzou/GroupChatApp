@@ -22,13 +22,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      // 認証セッションの userId を使う。未ログイン時は環境変数デフォルトへフォールバック。
       final sessionUser = ref.read(authSessionProvider);
-      const fallbackUserId = String.fromEnvironment(
-        'CHAT_USER_ID',
-        defaultValue: 'user-001',
-      );
-      final userId = sessionUser?.id ?? fallbackUserId;
+      final userId = sessionUser?.id;
+      if (userId == null || userId.isEmpty) return;
       ref.read(profileNotifierProvider.notifier).loadUser(userId);
     });
   }
@@ -59,11 +55,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     // userId が空なら（未ロードなら）ここでロードする。userId の取得方法はアプリ次第。
     if (state.user.id.isEmpty) {
       final sessionUser = ref.read(authSessionProvider);
-      const fallbackUserId = String.fromEnvironment(
-        'CHAT_USER_ID',
-        defaultValue: 'user-001',
-      );
-      final userId = sessionUser?.id ?? fallbackUserId;
+      final userId = sessionUser?.id;
+      if (userId == null || userId.isEmpty) return;
       await notifier.loadUser(userId);
     }
 

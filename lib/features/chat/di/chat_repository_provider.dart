@@ -14,16 +14,14 @@ ChatRepository chatRepository(ChatRepositoryRef ref) {
   // remote: FastAPIエンドポイントとの通信
   final remote = ref.watch(chatRemoteDataSourceProvider);
   final authSession = ref.watch(authSessionProvider);
-  // 現在ユーザーID。将来は認証基盤(JWT等)から供給する想定。
-  const currentUserId = String.fromEnvironment(
-    'CHAT_USER_ID',
-    defaultValue: 'user-001',
-  );
+  // 未ログイン時は空文字を設定し、API側401/403に委ねる。
+  // ここで例外を投げると画面遷移中にProvider例外が露出しやすいため。
+  final currentUserId = authSession?.id ?? '';
 
   // Domain層には ChatRepository 抽象だけを公開し、実装詳細を隠蔽する。
   return ChatRepositoryImpl(
     local: local,
     remote: remote,
-    currentUserId: authSession?.id ?? currentUserId,
+    currentUserId: currentUserId,
   );
 }

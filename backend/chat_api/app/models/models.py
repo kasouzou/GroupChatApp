@@ -33,6 +33,25 @@ class AppUser(Base):
     # - 本番ではユニーク制約や監査カラム(created_by等)追加を検討。
 
 
+class AppUserSession(Base):
+    # APIアクセス用セッション（簡易Bearerトークン）。
+    # MVP段階ではDBセッション方式で運用し、将来JWTへ置換しやすいよう分離する。
+    __tablename__ = "app_user_sessions"
+    __table_args__ = (
+        UniqueConstraint("access_token", name="uq_app_user_session_access_token"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("app_users.id", ondelete="CASCADE"), nullable=False)
+    access_token: Mapped[str] = mapped_column(String(128), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+
 class ChatGroup(Base):
     # グループ基本情報
     __tablename__ = "chat_groups"

@@ -38,11 +38,8 @@ class _ProfileEditPageState extends ConsumerState<ProfileEditPage> {
       final current = ref.read(profileNotifierProvider).user;
       if (current.id.isEmpty) {
         final sessionUser = ref.read(authSessionProvider);
-        const fallbackUserId = String.fromEnvironment(
-          'CHAT_USER_ID',
-          defaultValue: 'user-001',
-        );
-        final userId = sessionUser?.id ?? fallbackUserId;
+        final userId = sessionUser?.id;
+        if (userId == null || userId.isEmpty) return;
         await notifier.loadUser(userId);
         if (!mounted) return;
       }

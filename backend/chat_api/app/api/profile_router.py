@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import AuthUser, require_auth_user
 from app.db.database import get_db
 from app.models.models import AppUser
 from app.schemas.user import UpdateUserRequest, UserResponse
@@ -11,7 +12,14 @@ router = APIRouter(prefix="/api/v1", tags=["profile"])
 
 
 @router.get("/users/{user_id}", response_model=UserResponse)
-async def get_user(user_id: str, db: AsyncSession = Depends(get_db)) -> UserResponse:
+async def get_user(
+    user_id: str,
+    auth_user: AuthUser = Depends(require_auth_user),
+    db: AsyncSession = Depends(get_db),
+) -> UserResponse:
+    if user_id != auth_user.id:
+        raise HTTPException(status_code=403, detail="user_id does not match auth user")
+
     # Profile画面の初期表示データを返す。
     # 404時はクライアント側で再ログイン/初期登録の分岐に使える。
     user = await db.get(AppUser, user_id)
@@ -31,8 +39,12 @@ async def get_user(user_id: str, db: AsyncSession = Depends(get_db)) -> UserResp
 async def update_user(
     user_id: str,
     payload: UpdateUserRequest,
+    auth_user: AuthUser = Depends(require_auth_user),
     db: AsyncSession = Depends(get_db),
 ) -> UserResponse:
+    if user_id != auth_user.id:
+        raise HTTPException(status_code=403, detail="user_id does not match auth user")
+
     # Profile編集内容を更新する。
     # updated_at はサーバー時刻で上書きし、クライアント時刻依存を排除する。
     user = await db.get(AppUser, user_id)
@@ -56,7 +68,10 @@ async def update_user(
 
 
 @router.post("/uploads/profile-image")
-async def upload_profile_image(payload: dict) -> dict[str, str]:
+async def upload_profile_image(
+    payload: dict,
+    _: AuthUser = Depends(require_auth_user),
+) -> dict[str, str]:
     # 実運用ではS3/Cloud Storage等にアップロードして署名URLを返す。
     # 現在はフロントエンド開発を先行させるため、URL発行の最小実装のみ。
     file_path = str(payload.get("file_path", ""))

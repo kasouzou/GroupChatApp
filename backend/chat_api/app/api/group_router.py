@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import AuthUser, require_auth_user
 from app.db.database import get_db
 from app.models.models import AppUser, ChatGroup, ChatGroupInvite, ChatGroupMember
 from app.schemas.group import (
@@ -22,6 +23,7 @@ router = APIRouter(prefix="/api/v1", tags=["group"])
 @router.post("/groups", response_model=CreateGroupResponse)
 async def create_group(
     payload: CreateGroupRequest,
+    auth_user: AuthUser = Depends(require_auth_user),
     db: AsyncSession = Depends(get_db),
 ) -> CreateGroupResponse:
     # NewChatタブ向けのグループ作成API。
@@ -31,6 +33,9 @@ async def create_group(
     # 2. group_id採番とグループ作成
     # 3. 作成者+指定メンバーを所属テーブルへ登録
     # 4. 作成結果を返却
+    if payload.creator_user_id != auth_user.id:
+        raise HTTPException(status_code=403, detail="creator_user_id does not match auth user")
+
     creator = await db.get(AppUser, payload.creator_user_id)
     if creator is None:
         raise HTTPException(status_code=404, detail="creator user not found")
@@ -63,9 +68,13 @@ async def create_group(
 async def create_group_invite(
     payload: CreateInviteRequest,
     request: Request,
+    auth_user: AuthUser = Depends(require_auth_user),
     db: AsyncSession = Depends(get_db),
 ) -> CreateInviteResponse:
     # AddMember画面(招待する側)の招待コード発行API。
+    if payload.requester_user_id != auth_user.id:
+        raise HTTPException(status_code=403, detail="requester_user_id does not match auth user")
+
     group = await db.get(ChatGroup, payload.group_id)
     if group is None:
         raise HTTPException(status_code=404, detail="group not found")
@@ -109,10 +118,14 @@ async def create_group_invite(
 @router.post("/group-invites/join", response_model=JoinByInviteResponse)
 async def join_group_by_invite(
     payload: JoinByInviteRequest,
+    auth_user: AuthUser = Depends(require_auth_user),
     db: AsyncSession = Depends(get_db),
 ) -> JoinByInviteResponse:
     # AddMember画面(招待を受ける側)の参加API。
     # invite_code が有効で期限内ならグループに参加させる。
+    if payload.user_id != auth_user.id:
+        raise HTTPException(status_code=403, detail="user_id does not match auth user")
+
     invite_stmt = select(ChatGroupInvite).where(ChatGroupInvite.invite_code == payload.invite_code)
     invite = (await db.execute(invite_stmt)).scalar_one_or_none()
     if invite is None:
@@ -121,6 +134,8 @@ async def join_group_by_invite(
     now = datetime.now(timezone.utc)
     if invite.expires_at < now:
         raise HTTPException(status_code=410, detail="invite code expired")
+    if invite.consumed_at is not None:
+        raise HTTPException(status_code=409, detail="invite code already consumed")
 
     group = await db.get(ChatGroup, invite.group_id)
     if group is None:
@@ -135,8 +150,10 @@ async def join_group_by_invite(
         ChatGroupMember.user_id == payload.user_id,
     )
     membership = (await db.execute(membership_stmt)).scalar_one_or_none()
+    joined = False
     if membership is None:
         db.add(ChatGroupMember(group_id=invite.group_id, user_id=payload.user_id))
+        joined = True
 
     invite.consumed_by_user_id = payload.user_id
     invite.consumed_at = now
@@ -145,5 +162,5 @@ async def join_group_by_invite(
     return JoinByInviteResponse(
         group_id=group.id,
         group_name=group.name,
-        joined=True,
+        joined=joined,
     )

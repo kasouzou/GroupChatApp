@@ -15,16 +15,21 @@ docker compose up -d --build
 - ヘルスチェック: `GET http://localhost:8080/health`
 
 ## Flutter接続
-Flutter起動時にAPI URLとユーザーIDを指定:
+Flutter起動時にAPI URLを指定:
 ```bash
 flutter run \
-  --dart-define=CHAT_API_BASE_URL=http://localhost:8080 \
-  --dart-define=CHAT_USER_ID=user-001
+  --dart-define=CHAT_API_BASE_URL=http://localhost:8080
 ```
+
+Googleログイン後に `POST /api/v1/auth/google-login` で取得した `access_token` を
+`Authorization: Bearer <token>` として各APIへ付与してください
+（本Flutter実装では `AuthHttpClient` が自動付与します）。
 
 ## エンドポイント
 - `POST /api/v1/auth/google-login`
-  - Googleログイン情報を受け取り、ユーザーをupsert
+  - Googleログイン情報を受け取り、ユーザーをupsert + `access_token` 発行
+- `POST /api/v1/auth/logout`
+  - 現在ユーザーのセッションを破棄
 - `GET /api/v1/users/{user_id}`
   - Profile表示用のユーザー情報取得
 - `PUT /api/v1/users/{user_id}`
@@ -49,5 +54,7 @@ flutter run \
 - `created_at_ms` はサーバー確定時刻（UTC epoch ms）です。
 
 ## 備考
-- 現在はアプリ起動時に最小限のグループ/メンバーをシードします。
-- 本番では認証（JWT等）と権限チェックを追加してください。
+- すべての業務API（auth以外）は Bearer認証必須です。
+- デモシードは `ENABLE_DEMO_SEED=false`（デフォルト）で無効です。
+- 起動時に軽量マイグレーションランナーが `schema_migrations` を使って
+  `app_user_sessions` / `chat_group_invites` を管理します。

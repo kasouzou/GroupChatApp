@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import AuthUser, require_auth_user
 from app.db.database import get_db
 from app.models.models import ChatGroup, ChatGroupMember, ChatMessage
 from app.schemas.chat import (
@@ -20,7 +21,14 @@ router = APIRouter(prefix="/api/v1", tags=["chat"])
 
 
 @router.get("/users/{user_id}/groups", response_model=ListGroupsResponse)
-async def list_user_groups(user_id: str, db: AsyncSession = Depends(get_db)) -> ListGroupsResponse:
+async def list_user_groups(
+    user_id: str,
+    auth_user: AuthUser = Depends(require_auth_user),
+    db: AsyncSession = Depends(get_db),
+) -> ListGroupsResponse:
+    if user_id != auth_user.id:
+        raise HTTPException(status_code=403, detail="user_id does not match auth user")
+
     # 1) ユーザー所属グループIDを取得
     membership_stmt: Select[tuple[str]] = select(ChatGroupMember.group_id).where(ChatGroupMember.user_id == user_id)
     membership_result = await db.execute(membership_stmt)
@@ -68,7 +76,19 @@ async def list_user_groups(user_id: str, db: AsyncSession = Depends(get_db)) -> 
 
 
 @router.get("/groups/{group_id}/messages", response_model=ListMessagesResponse)
-async def list_group_messages(group_id: str, db: AsyncSession = Depends(get_db)) -> ListMessagesResponse:
+async def list_group_messages(
+    group_id: str,
+    auth_user: AuthUser = Depends(require_auth_user),
+    db: AsyncSession = Depends(get_db),
+) -> ListMessagesResponse:
+    membership_stmt: Select[tuple[ChatGroupMember]] = select(ChatGroupMember).where(
+        ChatGroupMember.group_id == group_id,
+        ChatGroupMember.user_id == auth_user.id,
+    )
+    membership = (await db.execute(membership_stmt)).scalar_one_or_none()
+    if membership is None:
+        raise HTTPException(status_code=403, detail="you are not a member of this group")
+
     # チャット画面用に時系列で返却
     stmt: Select[tuple[ChatMessage]] = (
         select(ChatMessage)
@@ -83,11 +103,26 @@ async def list_group_messages(group_id: str, db: AsyncSession = Depends(get_db))
 
 
 @router.post("/messages", response_model=SendMessageResponse)
-async def send_message(payload: SendMessageRequest, db: AsyncSession = Depends(get_db)) -> SendMessageResponse:
+async def send_message(
+    payload: SendMessageRequest,
+    auth_user: AuthUser = Depends(require_auth_user),
+    db: AsyncSession = Depends(get_db),
+) -> SendMessageResponse:
+    if payload.sender_id != auth_user.id:
+        raise HTTPException(status_code=403, detail="sender_id does not match auth user")
+
     # 送信先グループ存在チェック
     group = await db.get(ChatGroup, payload.group_id)
     if group is None:
         raise HTTPException(status_code=404, detail="group not found")
+
+    membership_stmt: Select[tuple[ChatGroupMember]] = select(ChatGroupMember).where(
+        ChatGroupMember.group_id == payload.group_id,
+        ChatGroupMember.user_id == auth_user.id,
+    )
+    membership = (await db.execute(membership_stmt)).scalar_one_or_none()
+    if membership is None:
+        raise HTTPException(status_code=403, detail="you are not a member of this group")
 
     # サーバー確定値（ID/時刻）を発行。
     # created_at_ms はクライアント入力を信用せず、サーバー値で確定する。

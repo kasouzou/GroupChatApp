@@ -24,6 +24,8 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql+asyncpg://chat_user:chat_password@postgres:5432/group_chat
+      ENABLE_DEMO_SEED: "false"
+      SESSION_TTL_MINUTES: "10080"
     depends_on:
       postgres:
         condition: service_healthy

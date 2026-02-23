@@ -17,6 +17,7 @@ class AuthRepositoryImpl implements AuthRepository {
   final GoogleSignIn _googleSignIn;
   final AuthRemoteDataSource _remote;
   Future<void>? _initializeFuture;
+  String? _lastAccessToken;
 
   AuthRepositoryImpl({
     required GoogleSignIn googleSignIn,
@@ -36,14 +37,24 @@ class AuthRepositoryImpl implements AuthRepository {
       displayName: account.displayName ?? 'NoName',
       photoUrl: account.photoUrl ?? '',
     );
+    _lastAccessToken = user.accessToken;
     return user;
   }
 
   @override
   Future<void> signOut() async {
     await _initialize();
+    final token = _lastAccessToken;
+    if (token != null && token.isNotEmpty) {
+      try {
+        await _remote.logout(accessToken: token);
+      } catch (_) {
+        // ログアウトAPI失敗時も端末側ログアウトは継続する。
+      }
+    }
     // Googleセッション破棄。アプリ側セッションStateはUI層でクリアする。
     await _googleSignIn.signOut();
+    _lastAccessToken = null;
   }
 
   Future<void> _initialize() {

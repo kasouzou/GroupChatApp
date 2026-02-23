@@ -1,9 +1,15 @@
+// Flutterの基本ウィジェットを利用するためのインポート
 import 'package:flutter/material.dart';
+// RiverpodのConsumerStateを使うためのインポート
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+// 認証セッションを取得するプロバイダのインポート
 import 'package:group_chat_app/features/auth/di/auth_session_provider.dart';
+// チャット作成ユースケースのプロバイダを利用するためのインポート
 import 'package:group_chat_app/features/new_chat/di/create_chat_usecase_provider.dart';
+// 破棄確認ダイアログ表示用ヘルパーのインポート
 import 'package:group_chat_app/shared/widgets/show_discard_dialog.dart';
 
+// グループ作成画面ウィジェット
 /// グループ作成画面。
 ///
 /// 責務:
@@ -11,17 +17,20 @@ import 'package:group_chat_app/shared/widgets/show_discard_dialog.dart';
 /// - 保存時に CreateChatUsecase を呼ぶ
 /// - 作成成功で groupId を前画面へ返却
 class MakeChatPage extends ConsumerStatefulWidget {
+  // コンストラクタ
   const MakeChatPage({super.key});
 
+  // Stateを生成
   @override
   ConsumerState<MakeChatPage> createState() => _MakeChatPageState();
 }
 
+// State実装
 class _MakeChatPageState extends ConsumerState<MakeChatPage> {
-  // ▼ 独自に宣言した変数（状態管理用）
+  // チャット名入力用コントローラ
   final TextEditingController _chatNameController = TextEditingController();
 
-  // 権限の状態をMapで管理（疎結合で拡張しやすい！）
+  // 権限をMapで管理（キーで判定して表示）
   final Map<String, bool> _permissions = {
     'add_member': false, // 新規メンバー追加権
     'delete_member': true, // メンバーの削除
@@ -30,20 +39,24 @@ class _MakeChatPageState extends ConsumerState<MakeChatPage> {
     'delete_message': false, // 他人のメッセージ削除（追加提案）
     'pin_message': false, // メッセージの固定（追加提案）
   };
+  // 保存中フラグ（多重送信防止）
   bool _isSaving = false;
 
+  // 解放処理
   @override
   void dispose() {
     _chatNameController.dispose();
     super.dispose();
   }
 
+  // 描画
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         leading: IconButton(
+          // 閉じるボタン。破棄確認を表示して戻る
           icon: const Icon(Icons.close, color: Colors.white),
           onPressed: () async {
             final shouldDiscard = await showDiscardDialog(context);
@@ -60,7 +73,7 @@ class _MakeChatPageState extends ConsumerState<MakeChatPage> {
         centerTitle: true,
       ),
       body: SingleChildScrollView(
-        // ★ レスポンシブ対策：キーボードが出ても溢れない
+        // レイアウトパディング（キーボード対応）
         padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -70,11 +83,12 @@ class _MakeChatPageState extends ConsumerState<MakeChatPage> {
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 10),
+            // チャット名入力欄
             TextField(
-              controller: _chatNameController, // 組み込みのコントローラー
+              controller: _chatNameController, // 入力コントローラ
               decoration: InputDecoration(
                 filled: true,
-                fillColor: const Color(0xFF9195F6).withOpacity(0.6), // ラフの色に近い紫
+                fillColor: const Color(0xFF9195F6).withOpacity(0.6), // 背景色
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -88,7 +102,7 @@ class _MakeChatPageState extends ConsumerState<MakeChatPage> {
             ),
             const SizedBox(height: 10),
 
-            // 権限リストの生成
+            // 権限チェックボックスのリストを生成
             ..._permissions.keys.map((key) {
               return CheckboxListTile(
                 title: Text(_getLabel(key)),
@@ -96,18 +110,18 @@ class _MakeChatPageState extends ConsumerState<MakeChatPage> {
                     ? const Text('(デフォルトではOFFになっています)')
                     : null,
                 value: _permissions[key],
-                activeColor: const Color(0xFF4D86F7), // 保存ボタンに近い青
+                activeColor: const Color(0xFF4D86F7), // チェック色
                 onChanged: (bool? value) {
                   setState(() {
                     _permissions[key] = value ?? false;
                   });
                 },
-                controlAffinity:
-                    ListTileControlAffinity.leading, // チェックボックスを左側に
+                controlAffinity: ListTileControlAffinity.leading, // チェックを左に表示
               );
             }),
 
             const SizedBox(height: 50),
+            // 保存ボタン
             SizedBox(
               width: double.infinity,
               height: 60,
@@ -137,7 +151,7 @@ class _MakeChatPageState extends ConsumerState<MakeChatPage> {
     );
   }
 
-  // キー名を表示用テキストに変換する独自関数
+  // キー名を表示用ラベルへ変換するヘルパー
   String _getLabel(String key) {
     switch (key) {
       case 'add_member':
@@ -157,6 +171,7 @@ class _MakeChatPageState extends ConsumerState<MakeChatPage> {
     }
   }
 
+  // 保存ボタン押下時の処理
   Future<void> _onSavePressed() async {
     // 1) 入力チェック
     final name = _chatNameController.text.trim();
@@ -167,18 +182,17 @@ class _MakeChatPageState extends ConsumerState<MakeChatPage> {
       return;
     }
 
-    // 2) 保存開始（多重送信防止）
+    // 2) 保存処理開始（多重送信防止）
     setState(() => _isSaving = true);
     try {
       final currentUser = ref.read(authSessionProvider);
-      const fallbackUserId = String.fromEnvironment(
-        'CHAT_USER_ID',
-        defaultValue: 'user-001',
-      );
-      final creatorUserId = currentUser?.id ?? fallbackUserId;
+      final creatorUserId = currentUser?.id;
+      if (creatorUserId == null || creatorUserId.isEmpty) {
+        throw StateError('ログイン状態が無効です。再ログインしてください');
+      }
       final usecase = ref.read(createChatUsecaseProvider);
 
-      // 3) UseCase実行 -> APIでグループ作成
+      // 3) UseCase呼び出しでグループを作成
       final groupId = await usecase.call(
         name: name,
         creatorUserId: creatorUserId,
@@ -196,7 +210,7 @@ class _MakeChatPageState extends ConsumerState<MakeChatPage> {
         context,
       ).showSnackBar(SnackBar(content: Text('作成に失敗しました: $e')));
     } finally {
-      // 4) 保存状態を戻す
+      // 4) 状態を元に戻す
       if (mounted) setState(() => _isSaving = false);
     }
   }

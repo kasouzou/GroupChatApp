@@ -2,6 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.models import AppUser, Base, ChatGroup, ChatGroupMember
+from app.settings import settings
 
 
 async def init_database(engine) -> None:
@@ -11,6 +12,10 @@ async def init_database(engine) -> None:
 
 
 async def seed_initial_data(session: AsyncSession) -> None:
+    if not settings.enable_demo_seed:
+        # 本番環境ではデモデータを投入しない。
+        return
+
     # 既存データがある場合はシードしない
     existing = await session.execute(select(ChatGroup.id))
     if existing.first() is not None:

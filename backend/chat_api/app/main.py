@@ -2,19 +2,22 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.api.error_handlers import register_error_handlers
 from app.api.auth_router import router as auth_router
 from app.api.chat_router import router as chat_router
 from app.api.group_router import router as group_router
 from app.api.profile_router import router as profile_router
 from app.db.database import SessionLocal, engine
 from app.db.init_db import init_database, seed_initial_data
+from app.db.migration_runner import run_migrations
 from app.settings import settings
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    # 起動時にテーブル作成と初期データ投入を実施
-    # 開発環境ではこれで最小起動可能。本番ではmigrationツール(Alembic)へ移行推奨。
+    # 起動時にスキーマをマイグレーションし、未作成テーブルを補完する。
+    # NOTE: 現在は軽量runner。運用安定後はAlembic管理へ移行する。
+    await run_migrations(engine)
     await init_database(engine)
     async with SessionLocal() as session:
         await seed_initial_data(session)
@@ -22,6 +25,7 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title=settings.app_name, version="1.0.0", lifespan=lifespan)
+register_error_handlers(app)
 # ルーター登録順:
 # - auth/profile/group/chat の順で機能別に分割
 # - 依存はDBセッション注入(get_db)で統一

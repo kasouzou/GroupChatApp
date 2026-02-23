@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:group_chat_app/core/network/auth_http_client.dart';
+import 'package:group_chat_app/features/auth/di/auth_session_provider.dart';
 import 'package:group_chat_app/features/new_chat/data/datasource/remote/new_chat_remote_datasource.dart';
 import 'package:group_chat_app/features/new_chat/data/datasource/remote/new_chat_remote_datasource_impl.dart';
 import 'package:group_chat_app/features/new_chat/data/new_chat_repository_impl.dart';
@@ -8,7 +10,11 @@ import 'package:http/http.dart' as http;
 /// NewChat用HTTPクライアント。
 /// Provider破棄時にcloseしてソケットリークを防ぐ。
 final newChatHttpClientProvider = Provider<http.Client>((ref) {
-  final client = http.Client();
+  final rawClient = http.Client();
+  final client = AuthHttpClient(
+    inner: rawClient,
+    tokenProvider: () => ref.read(authSessionProvider)?.accessToken,
+  );
   ref.onDispose(client.close);
   return client;
 });

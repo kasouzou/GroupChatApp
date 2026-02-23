@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:group_chat_app/features/auth/di/auth_remote_datasource_provider.dart';
 import 'package:group_chat_app/features/auth/di/auth_session_provider.dart';
 import 'package:group_chat_app/features/auth/di/google_login_usecase_provider.dart';
 import 'package:group_chat_app/features/auth/presentation/pages/login_page.dart';
@@ -233,6 +234,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
     setState(() => _isSigningOut = true);
     try {
+      final session = ref.read(authSessionProvider);
+      final token = session?.accessToken;
+      if (token != null && token.isNotEmpty) {
+        final remote = ref.read(authRemoteDataSourceProvider);
+        await remote.logout(accessToken: token);
+      }
+
       final useCase = ref.read(googleLoginUseCaseProvider);
       await useCase.signOut();
       ref.read(authSessionProvider.notifier).state = null;

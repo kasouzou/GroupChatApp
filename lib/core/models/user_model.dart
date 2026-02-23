@@ -4,11 +4,12 @@ import 'package:flutter/material.dart';
 @immutable // このクラスのインスタンスは作成後に変更されないことを保証する
 class UserModel {
   // 1. 基本データフィールド
-  final String id;           // Google UIDなどの一意の識別子
-  final String displayName;  // 表示名
-  final String photoUrl;     // アイコン画像のURL
-  final DateTime createdAt;  // 作成日時
-  final DateTime updatedAt;  // 更新日時
+  final String id; // Google UIDなどの一意の識別子
+  final String displayName; // 表示名
+  final String photoUrl; // アイコン画像のURL
+  final DateTime createdAt; // 作成日時
+  final DateTime updatedAt; // 更新日時
+  final String? accessToken; // API認証用トークン（ログイン時に付与）
 
   const UserModel({
     required this.id,
@@ -16,6 +17,7 @@ class UserModel {
     required this.photoUrl,
     required this.createdAt,
     required this.updatedAt,
+    this.accessToken,
   });
 
   // --- シリアライズ（DBとのやり取り用） ---
@@ -26,14 +28,15 @@ class UserModel {
       id: map['id'] ?? '',
       displayName: map['display_name'] ?? 'ゲスト',
       photoUrl: map['photo_url'] ?? '',
-      createdAt: map['created_at'] != null 
-          ? DateTime.parse(map['created_at']) 
+      createdAt: map['created_at'] != null
+          ? DateTime.parse(map['created_at'])
           : DateTime.now(),
       updatedAt: map['updated_at'] != null
           ? DateTime.parse(map['updated_at'])
           : (map['created_at'] != null
-              ? DateTime.parse(map['created_at'])
-              : DateTime.now()),
+                ? DateTime.parse(map['created_at'])
+                : DateTime.now()),
+      accessToken: map['access_token'] as String?,
     );
   }
 
@@ -45,6 +48,7 @@ class UserModel {
       'photo_url': photoUrl,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
+      if (accessToken != null) 'access_token': accessToken,
     };
   }
 
@@ -53,7 +57,7 @@ class UserModel {
     String? displayName,
     String? photoUrl,
     DateTime? updatedAt,
-    String? role,
+    String? accessToken,
   }) {
     return UserModel(
       id: id,
@@ -61,6 +65,7 @@ class UserModel {
       photoUrl: photoUrl ?? this.photoUrl,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      accessToken: accessToken ?? this.accessToken,
     );
   }
 
@@ -73,6 +78,7 @@ class UserModel {
       photoUrl: '',
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
+      accessToken: null,
     );
   }
 }

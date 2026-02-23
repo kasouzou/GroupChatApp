@@ -1,31 +1,49 @@
+// Flutterの基本ウィジェットセットを利用するインポート
 import 'package:flutter/material.dart';
+// RiverpodのConsumerWidget/ConsumerStateを使うためのインポート
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+// 認証セッション情報を取得するプロバイダのインポート
 import 'package:group_chat_app/features/auth/di/auth_session_provider.dart';
+// 招待発行ユースケースのプロバイダを利用するためのインポート
 import 'package:group_chat_app/features/new_chat/di/create_group_invite_usecase_provider.dart';
+// 招待参加ユースケースのプロバイダを利用するためのインポート
 import 'package:group_chat_app/features/new_chat/di/join_group_by_invite_usecase_provider.dart';
+// 招待情報のエンティティを利用するためのインポート
 import 'package:group_chat_app/features/new_chat/domain/entities/group_invite_info.dart';
+// 破棄確認ダイアログを表示するヘルパーのインポート
 import 'package:group_chat_app/shared/widgets/show_discard_dialog.dart';
+// カメラスキャン用ライブラリのインポート
 import 'package:mobile_scanner/mobile_scanner.dart';
+// QRコード描画ライブラリのインポート
 import 'package:qr_flutter/qr_flutter.dart';
 
+// メンバー追加用ページのStatefulWidget定義
 class AddMemberPage extends ConsumerStatefulWidget {
+  // オプションで初期の groupId を受け取れる
   final String? groupId;
 
+  // コンストラクタ
   const AddMemberPage({super.key, this.groupId});
 
+  // Stateオブジェクトを生成する
   @override
   ConsumerState<AddMemberPage> createState() => _AddMemberPageState();
 }
 
+// State実装部
 class _AddMemberPageState extends ConsumerState<AddMemberPage> {
-  // 連続スキャン/多重実行の防止フラグ
+  // 連続スキャンや多重実行を防止するフラグ
   bool _isProcessing = false;
+  // 発行された招待情報を保持する変数
   GroupInviteInfo? _inviteInfo;
+  // GroupIdを編集するためのテキストコントローラ
   late final TextEditingController _groupIdController;
 
+  // 初期化処理
   @override
   void initState() {
     super.initState();
+    // コントローラを生成し、渡されたgroupIdか環境変数のデフォルト値を設定
     _groupIdController = TextEditingController(
       text:
           widget.groupId ??
@@ -34,17 +52,20 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
             defaultValue: 'family_group_001',
           ),
     );
+    // ウィジェットツリー構築後に招待情報を取得する
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshInvite();
     });
   }
 
+  // 破棄処理でコントローラを解放
   @override
   void dispose() {
     _groupIdController.dispose();
     super.dispose();
   }
 
+  // 描画ロジック
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -52,8 +73,10 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
       child: Scaffold(
         appBar: AppBar(
           leading: IconButton(
+            // 閉じるボタン
             icon: const Icon(Icons.close, color: Colors.white),
             onPressed: () async {
+              // 破棄確認ダイアログを表示
               final shouldDiscard = await showDiscardDialog(context);
               if (shouldDiscard != true) {
                 return;
@@ -62,11 +85,13 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
               Navigator.pop(context, 'cancel');
             },
           ),
+          // タイトル表示
           title: const Text(
             'メンバー追加',
             style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
           ),
           centerTitle: true,
+          // タブバー（スキャン / 招待発行）
           bottom: const TabBar(
             tabs: [
               Tab(icon: Icon(Icons.camera_alt), text: '招待を受ける'),
@@ -74,6 +99,7 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
             ],
           ),
         ),
+        // タブに対応するビューを表示する
         body: TabBarView(
           physics: const NeverScrollableScrollPhysics(),
           children: [_buildScannerTab(), _buildInviteTab()],
@@ -86,6 +112,7 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
   Widget _buildScannerTab() {
     return Stack(
       children: [
+        // カメラでQRをスキャン
         MobileScanner(
           onDetect: (capture) {
             if (_isProcessing) return;
@@ -94,12 +121,14 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
             for (final barcode in barcodes) {
               final raw = barcode.rawValue;
               if (raw != null && raw.isNotEmpty) {
+                // スキャン結果を処理する
                 _handleJoinGroup(raw);
                 break;
               }
             }
           },
         ),
+        // スキャン枠の視覚表示
         Center(
           child: Container(
             width: 250,
@@ -110,8 +139,10 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
             ),
           ),
         ),
+        // 処理中インジケータ
         if (_isProcessing)
           const Center(child: CircularProgressIndicator(color: Colors.white)),
+        // 手入力ボタン（画面下部）
         Positioned(
           bottom: 40,
           left: 0,
@@ -136,6 +167,7 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
 
   // --- タブ2：招待画面（招待コード発行） ---
   Widget _buildInviteTab() {
+    // 表示用の招待コードとQRデータ／有効期限を準備
     final inviteCode = _inviteInfo?.inviteCode ?? '----';
     final qrData = _inviteInfo?.inviteUrl ?? 'INVITE_NOT_READY';
     final expiresAt = _inviteInfo?.expiresAt;
@@ -146,6 +178,7 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            // GroupId入力欄
             TextField(
               controller: _groupIdController,
               decoration: const InputDecoration(
@@ -154,6 +187,7 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
               ),
             ),
             const SizedBox(height: 12),
+            // 招待コード再生成ボタン
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
@@ -169,6 +203,7 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 20),
+            // QRコード描画
             QrImageView(
               data: qrData,
               version: QrVersions.auto,
@@ -180,6 +215,7 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
             const SizedBox(height: 12),
             const Text('または、この番号を教えてね：', style: TextStyle(color: Colors.grey)),
             const SizedBox(height: 8),
+            // 招待コードの大きな表示
             Text(
               inviteCode,
               style: const TextStyle(
@@ -191,6 +227,7 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
+            // 有効期限表示（取得中または日時を表示）
             Text(
               expiresAt == null
                   ? '有効期限を取得中...'
@@ -204,6 +241,7 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
     );
   }
 
+  // 手入力ダイアログを表示するヘルパー
   void _showManualEntryDialog() {
     final controller = TextEditingController();
 
@@ -219,10 +257,12 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
         ),
         actions: [
           TextButton(
+            // キャンセルボタン
             onPressed: () => Navigator.pop(dialogContext),
             child: const Text('キャンセル'),
           ),
           ElevatedButton(
+            // 入力されたコードで参加処理を呼ぶ
             onPressed: () {
               Navigator.pop(dialogContext);
               _handleJoinGroup(controller.text.trim());
@@ -234,6 +274,7 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
     );
   }
 
+  // 招待情報（QR/コード）をリフレッシュして取得する
   Future<void> _refreshInvite() async {
     final groupId = _groupIdController.text.trim();
     if (groupId.isEmpty) {
@@ -241,13 +282,15 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
       return;
     }
 
+    // 現在の認証セッションを取得
     final currentUser = ref.read(authSessionProvider);
-    const fallbackUserId = String.fromEnvironment(
-      'CHAT_USER_ID',
-      defaultValue: 'user-001',
-    );
-    final userId = currentUser?.id ?? fallbackUserId;
+    final userId = currentUser?.id;
+    if (userId == null || userId.isEmpty) {
+      _showSnack('ログイン状態が無効です。再ログインしてください');
+      return;
+    }
 
+    // 処理中フラグを立ててUseCaseを呼び出す
     setState(() => _isProcessing = true);
     try {
       final useCase = ref.read(createGroupInviteUseCaseProvider);
@@ -266,6 +309,7 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
     }
   }
 
+  // スキャンまたは手入力で受け取った値から参加処理を行う
   Future<void> _handleJoinGroup(String rawData) async {
     final inviteCode = _extractInviteCode(rawData);
     if (inviteCode.isEmpty) {
@@ -274,11 +318,11 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
     }
 
     final currentUser = ref.read(authSessionProvider);
-    const fallbackUserId = String.fromEnvironment(
-      'CHAT_USER_ID',
-      defaultValue: 'user-001',
-    );
-    final userId = currentUser?.id ?? fallbackUserId;
+    final userId = currentUser?.id;
+    if (userId == null || userId.isEmpty) {
+      _showSnack('ログイン状態が無効です。再ログインしてください');
+      return;
+    }
 
     setState(() => _isProcessing = true);
     try {
@@ -294,6 +338,7 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
     }
   }
 
+  // 生データから招待コードだけを抽出するユーティリティ
   String _extractInviteCode(String raw) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return '';
@@ -305,10 +350,11 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
       return code.toUpperCase();
     }
 
-    // 生コード形式
+    // 生コード形式ならそのまま大文字化して返す
     return trimmed.toUpperCase();
   }
 
+  // スナックバーでメッセージを表示するヘルパー
   void _showSnack(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(

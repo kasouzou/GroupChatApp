@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:group_chat_app/core/models/user_model.dart';
+import 'package:group_chat_app/core/network/api_error_parser.dart';
 import 'package:group_chat_app/core/network/api_config.dart';
 import 'package:group_chat_app/features/profile/data/datasource/remote/profile_remote_datasource.dart';
 import 'package:http/http.dart' as http;
@@ -60,8 +61,6 @@ class ProfileRemoteDatasourceImpl implements ProfileRemoteDataSource {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return;
     }
-    throw Exception(
-      'Profile API failed: status=${response.statusCode} endpoint=$endpoint body=${response.body}',
-    );
+    throw toAppException(response, endpoint: endpoint);
   }
 }

@@ -7,4 +7,6 @@ abstract class AuthRemoteDataSource {
     required String displayName,
     required String photoUrl,
   });
+
+  Future<void> logout({required String accessToken});
 }

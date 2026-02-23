@@ -78,7 +78,8 @@ class ChatNotifier extends _$ChatNotifier {
     required String currentUserId,
     required String currentUserRole,
   }) {
-    state = state.copyWith(// この「state」とは何でしょうか？ 根本から理解したいです。→https://www.notion.so/2026-1-28-2f68b8225642805a9a82c15189ab7826?source=copy_link#30f8b8225642800f8fd0e0ec92db6be5
+    state = state.copyWith(
+      // この「state」とは何でしょうか？ 根本から理解したいです。→https://www.notion.so/2026-1-28-2f68b8225642805a9a82c15189ab7826?source=copy_link#30f8b8225642800f8fd0e0ec92db6be5
       groupId: groupId,
       currentUserId: currentUserId,
       currentUserRole: currentUserRole,
@@ -94,6 +95,10 @@ class ChatNotifier extends _$ChatNotifier {
 
     /// 空のテキストか送信中の場合は処理を中止
     if (trimmed.isEmpty || state.isSending) return;
+    if (state.groupId.isEmpty || state.currentUserId.isEmpty) {
+      state = state.copyWith(errorMessage: 'ログイン状態が無効です。再ログインしてください');
+      return;
+    }
 
     /// 送信中状態に更新してエラーをクリア
     state = state.copyWith(isSending: true, clearError: true);

@@ -1,12 +1,19 @@
+// Flutterの基本ウィジェットを利用するためのインポート
 import 'package:flutter/material.dart';
+// メンバー追加ページのインポート
 import 'package:group_chat_app/features/new_chat/presentation/pages/add_member_page.dart';
+// チャット作成ページのインポート
 import 'package:group_chat_app/features/new_chat/presentation/pages/make_chat_page.dart';
 
+// 新規チャット作成やメンバー追加のハブとなるページ
 class NewChatPage extends StatelessWidget {
+  // コンストラクタ
   const NewChatPage({super.key});
 
+  // 描画
   @override
   Widget build(BuildContext context) {
+    // 画面情報を取得してレイアウトを切り替える
     final mediaQuery = MediaQuery.of(context);
     final isLandscape = mediaQuery.orientation == Orientation.landscape;
     final screenShortSide = mediaQuery.size.shortestSide;
@@ -30,10 +37,12 @@ class NewChatPage extends StatelessWidget {
                   ),
                   child: Center(
                     child: Flex(
+                      // 横向きなら横並び、縦向きなら縦並びにする
                       direction: isLandscape ? Axis.horizontal : Axis.vertical,
                       mainAxisAlignment: MainAxisAlignment.center, // 垂直・水平方向の中央
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
+                        // チャット作成ボタン
                         _buildHubButton(
                           context: context,
                           label: 'チャット作成',
@@ -48,6 +57,7 @@ class NewChatPage extends StatelessWidget {
                           width: isLandscape ? 40 : 0,
                           height: isLandscape ? 0 : 40,
                         ),
+                        // メンバー追加ボタン
                         _buildHubButton(
                           context: context,
                           label: 'メンバー追加',
@@ -69,6 +79,7 @@ class NewChatPage extends StatelessWidget {
     );
   }
 
+  // ハブ画面で使う大きめのボタンウィジェットを生成するヘルパー
   Widget _buildHubButton({
     required BuildContext context,
     required String label,
@@ -78,7 +89,7 @@ class NewChatPage extends StatelessWidget {
     required double screenShortSide,
     required bool isLandscape,
   }) {
-    // 縦画面(Portrait)の時は少し大きめ(0.45)に設定して「ドカーン」感を出す
+    // 縦画面(Portrait)の時は少し大きめ(0.45)に設定して目立たせる
     final double buttonSize = isLandscape
         ? screenShortSide * 0.35
         : screenShortSide * 0.45;
@@ -93,11 +104,12 @@ class NewChatPage extends StatelessWidget {
             backgroundColor: const Color.fromARGB(255, 56, 210, 25),
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24), // 角丸を少し強調してモダンに
+              borderRadius: BorderRadius.circular(24), // 角丸デザイン
             ),
-            elevation: 8, // 影を強くして「ドカーン」感を強調
+            elevation: 8, // 影を強くして立体感を出す
           ),
           onPressed: () async {
+            // ボタン押下で目的の画面へ遷移する
             await Navigator.of(context, rootNavigator: true).push(
               MaterialPageRoute(
                 builder: (context) => destination,
@@ -108,8 +120,10 @@ class NewChatPage extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              // アイコン表示
               Icon(icon, size: buttonSize * 0.35),
               const SizedBox(height: 16),
+              // ラベル表示
               Text(
                 label,
                 textAlign: TextAlign.center,

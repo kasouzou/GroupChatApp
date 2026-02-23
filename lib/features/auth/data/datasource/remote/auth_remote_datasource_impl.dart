@@ -3,6 +3,7 @@ import 'dart:convert';
 
 // ユーザーモデルをインポート（APIレスポンスをこのモデルに変換）
 import 'package:group_chat_app/core/models/user_model.dart';
+import 'package:group_chat_app/core/network/api_error_parser.dart';
 // API の基本URL やエンドポイント情報を含むの設定ファイルをインポート
 import 'package:group_chat_app/core/network/api_config.dart';
 // AuthRemoteDataSource インターフェースをインポート（このクラスが実装する）
@@ -52,10 +53,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
     // ステータスコードをチェック：200-299 は成功、それ以外はエラー
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      // 失敗時は詳細情報とともに例外をスロー
-      throw Exception(
-        'Auth API failed: status=${response.statusCode} body=${response.body}',
-      );
+      // 標準化されたAPIエラー形式をAppExceptionへ変換する。
+      throw toAppException(response, endpoint: uri.toString());
     }
 
     // レスポンスボディの JSON 文字列をDart のMap に変換
@@ -63,5 +62,21 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     // レスポンスの Map からUserModel を生成して返す
     // fromMap コンストラクタでJSON をユーザーモデルに変換
     return UserModel.fromMap(body);
+  }
+
+  @override
+  Future<void> logout({required String accessToken}) async {
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/v1/auth/logout');
+    final response = await _client.post(
+      uri,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $accessToken',
+      },
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw toAppException(response, endpoint: uri.toString());
+    }
   }
 }

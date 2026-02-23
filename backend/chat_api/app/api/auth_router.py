@@ -1,11 +1,15 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import AuthUser, require_auth_user
 from app.db.database import get_db
-from app.models.models import AppUser
+from app.models.models import AppUser, AppUserSession
 from app.schemas.user import GoogleLoginRequest, UserResponse
+from app.settings import settings
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -39,6 +43,17 @@ async def google_login(
         user.photo_url = payload.photo_url
         user.updated_at = now
 
+    # ユーザーごとの古いセッションを無効化し、新しいトークンを発行する。
+    # 将来は複数端末を許可する場合、この delete をやめて端末識別子列を追加する。
+    await db.execute(delete(AppUserSession).where(AppUserSession.user_id == payload.id))
+    access_token = uuid4().hex
+    session = AppUserSession(
+        user_id=payload.id,
+        access_token=access_token,
+        expires_at=now + timedelta(minutes=settings.session_ttl_minutes),
+    )
+    db.add(session)
+
     await db.commit()
     await db.refresh(user)
 
@@ -48,4 +63,16 @@ async def google_login(
         photo_url=user.photo_url,
         created_at=user.created_at,
         updated_at=user.updated_at,
+        access_token=access_token,
     )
+
+
+@router.post("/logout")
+async def logout(
+    auth_user: AuthUser = Depends(require_auth_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, bool]:
+    # 現在ユーザーのセッションを全破棄して再利用を防ぐ。
+    await db.execute(delete(AppUserSession).where(AppUserSession.user_id == auth_user.id))
+    await db.commit()
+    return {"success": True}

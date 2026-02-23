@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'package:group_chat_app/core/network/api_error_parser.dart';
 import 'package:group_chat_app/core/network/api_config.dart';
 import 'package:group_chat_app/features/chat/data/datasource/remote/chat_remote_datasource.dart';
 import 'package:group_chat_app/features/chat/data/datasource/remote/chat_remote_payloads.dart';
@@ -75,8 +76,6 @@ class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
       return;
     }
 
-    throw Exception(
-      'Remote request failed: ${response.statusCode} endpoint=$endpoint body=${response.body}',
-    );
+    throw toAppException(response, endpoint: endpoint);
   }
 }
