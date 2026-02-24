@@ -1,16 +1,38 @@
-#　GEMINI.md — 設計指示書（DDD + 疎結合 + Clean Architecture + Defensive Security）🚀
+# GEMINI.md — 設計指示書（DDD + 疎結合 + Clean Architecture + Defensive Security）🚀
 
 > **目的**：本プロジェクトはドメイン（ビジネス概念）を最優先し、変更に強く、テスト可能で差し替え容易な実装を目指す。設計判断は常に「このルールはビジネス概念か？ 技術的都合か？」を基準に行う。さらにコードは「攻撃者の視点」で設計・生成することを義務とする。
 
 ---
 
+## 0) 開発環境・インフラ構成
+
+本プロジェクトは、他アプリケーションとの干渉を防ぎつつ、将来的な拡張性とセキュリティを担保するため、以下の構成を採用する。
+
+*   **バックエンド（本番環境）**: Xserver VPS (Ubuntu)
+*   **ドメイン管理**: CloudFlare (kasouzou.com)
+*   **コンテナ基盤**: Docker / Docker Compose
+    *   各コンポーネントを独立したコンテナとして構築し、Dockerネットワークにより疎結合に管理。
+*   **Webサーバー**: Nginx
+    *   リバースプロキシとして機能し、Certbot (Let's Encrypt) による SSL/TLS 通信を必須とする。
+*   **APIサーバー**: FastAPI (ASGI: Uvicorn)
+*   **データベース**: PostgreSQL
+*   **ストレージ戦略**:
+    *   メディアファイル（画像・動画等）は Docker ボリュームを用いてホストOS上の永続領域に保存。
+    *   DBにはメタデータ（ファイル名、サイズ、形式等）とアクセス用の論理パスを記録する。
+*   **フロントエンド**: Flutter (Android Focus)
+    *   `LayoutBuilder` / `MediaQuery` を活用したレスポンシブかつ堅牢なウィジェット構成。
+    *   Riverpod による状態管理と、クリーンアーキテクチャによる関心の分離。
+
+---
+
 ## 1) 最終的なルール（端的）
 
-* 依存方向を厳守：`Presentation → Application → Domain`（Infrastructure は外側で Domain の抽象を実装する）。
-* Domain は純粋なビジネスモデル（エンティティ／値オブジェクト／不変条件／ドメインイベント）のみ。I/O・外部ライブラリは持ち込まない。
-* 外部処理（DB, HTTP, ファイル, Queue）は **Domain に抽象（ポート）を置き**、具象は Infrastructure に置く。
-* UseCase はオーケストレーター。状態遷移のルールは Domain に実装。UI更新は Repository の Stream を購読させる（原則 Presenter 不要）。
-* 用語ルール：Domain に技術語（`local`/`remote`/`HTTP`/`SQLite` 等）を持ち込まない。ビジネス語彙（`persist`/`dispatch`/`markSent`/`markFailed`）を使う。
+*   依存方向を厳守：`Presentation → Application → Domain`（Infrastructure は外側で Domain の抽象を実装する）。
+*   Domain は純粋なビジネスモデル（エンティティ／値オブジェクト／不変条件／ドメインイベント）のみ。I/O・外部ライブラリは持ち込まない。
+*   外部処理（DB, HTTP, ファイル, Queue）は **Domain に抽象（ポート）を置き**、具象は Infrastructure に置く。
+*   UseCase はオーケストレーター。状態遷移のルールは Domain に実装。UI更新は Repository の Stream を購読させる（原則 Presenter 不要）。
+*   用語ルール：Domain に技術語（`local`/`remote`/`HTTP`/`SQLite` 等）を持ち込まない。ビジネス語彙（`persist`/`dispatch`/`markSent`/`markFailed`）を使う。
+*   **フロー・ドキュメント**: 複雑な処理フロー（認証、チャット送信等）を実装する場合、フロントとバックのデータの流れを意識した `_FLOW.md` を作成し、可視化すること。
 
 ---
 
@@ -63,7 +85,7 @@ lib/
 
 ## 4) Repository / Port の設計方針
 
-* Repository は「集合への抽象」だけ（save/find/watch）。例：
+* Repository は「集合への抽象」だけ（save/find/watch）。**例：**
 
   ```dart
   abstract class MessageRepository {
@@ -117,9 +139,9 @@ lib/
 
 ## 8) Attachment / Upload の扱い
 
-* Attachment のアップロードは UseCase の判断で実行（事前アップロード or server 側で受け渡す方式を要件で決定）。
+* Attachment のアップロードは UseCase の判断で実行（例としてプロフィール画像は最終的な更新時＝保存ボタンが押された時にリモートにアップロードし、URLを得る形。）。
 * Upload 結果は `MessageContent` を差し替える形で Domain に反映し、`repository.save` で永続化する。
-* `AttachmentUploader` は Domain の抽象（ポート）を定義し実装は Infra（GCS/S3等）に置く。
+* `AttachmentUploader` は Domain の抽象（ポート）を定義し実装は Infra（VPSのSSD等）に置く。
 
 ---
 
@@ -128,6 +150,7 @@ lib/
 * `RetryPolicy` はビジネス決定なら Domain 抽象に置く（例：重要メッセージは 5 回リトライ）。技術的バックオフのみなら Application に置く。
 * 計算は純粋関数（`nextDelayMs(currentRetryCount)`）で実装してテスト容易にする。
 * retry を永続化したキュー（Infrastructure）で管理する場合、UseCase はそのキックのみを行う。
+基本的な思想として再送はアプリ側で自動化せず、ユーザーが再送ボタンを押したときだけ行う。
 
 ---
 

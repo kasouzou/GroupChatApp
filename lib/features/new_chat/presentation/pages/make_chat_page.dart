@@ -202,13 +202,13 @@ class _MakeChatPageState extends ConsumerState<MakeChatPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('作成しました: $groupId')));
+      ).showSnackBar(SnackBar(content: Text('グループを作成しました。ID: $groupId')));
       Navigator.pop(context, groupId);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('作成に失敗しました: $e')));
+      ).showSnackBar(SnackBar(content: Text('作成に失敗しました。エラーの原因: $e')));
     } finally {
       // 4) 状態を元に戻す
       if (mounted) setState(() => _isSaving = false);
